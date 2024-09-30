@@ -80,7 +80,7 @@ int main() {
 
 Models have increasingly complex templates (e.g. [NousResearch/Hermes-3-Llama-3.1](./third_party/templates/NousResearch-Hermes-3-Llama-3.1-70B-tool_use.jinja), [meetkai/functionary-medium-v3.2](./third_party/templates/meetkai-functionary-medium-v3.2.jinja)), so a fair bit of Jinja's language constructs is required to execute their templates properly.
 
-Minja supports:
+Minja supports the following subset of the [Jinja2/3 template syntax](https://jinja.palletsprojects.com/en/3.1.x/templates/):
 
 - Full expression syntax
 - Statements `{{% … %}}`, variable sections `{{ … }}`, and comments `{# … #}` with pre/post space elision `{%- … -%}` / `{{- … -}}` / `{#- … -#}`
