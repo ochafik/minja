@@ -1,3 +1,11 @@
+/*
+    Copyright 2024 Google LLC
+
+    Use of this source code is governed by an MIT-style
+    license that can be found in the LICENSE file or at
+    https://opensource.org/licenses/MIT.
+*/
+// SPDX-License-Identifier: MIT
 #include <chat-template.hpp>
 #include <iostream>
 
