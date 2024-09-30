@@ -1,4 +1,4 @@
-# minja.hpp - A minimalistic Jinja templating engine for LLM chat templates
+# minja.hpp - A minimalistic C++ Jinja templating engine for LLM chat templates
 
 _**This is not an official Google product**_
 
