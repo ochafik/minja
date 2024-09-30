@@ -11,9 +11,10 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 - Support each and every major LLM found on HuggingFace
     - See [update_templates_and_goldens.py](./update_templates_and_goldens.py) for list of models currently supported
 - Keep codebase small (currently 2.5k LoC) and easy to understand
-- Single header
-- C++11 only (or whatever biggest supported users - e.g. [llama.cpp](https://github.com/ggerganov/llama.cpp) - are using)
-- Only depend on [nlohmann::json](https://github.com/nlohmann/json). Boost will never be required.
+- Easy to integrate to projects such as [llama.cpp](https://github.com/ggerganov/llama.cpp):
+  - Header-only
+  - C++11
+  - Only depend on [nlohmann::json](https://github.com/nlohmann/json) (no Boost)
 - *Decent* performance compared to Python.
 
 ## Non-goals:
