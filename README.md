@@ -111,7 +111,19 @@ Main limitations (non-exhaustive list):
 - Macro nested set scope = global?
 - Get listed in https://jbmoelker.github.io/jinja-compat-tests/, https://en.cppreference.com/w/cpp/links/libs
 
-## Develop
+## Developer corner
+
+### Design overview
+
+- `minja::Parser` does two-phased parsing:
+  - its `tokenize()` method creates coarse template "tokens" (plain text section, or expression blocks or opening / closing blocks). Tokens may have nested expressions ASTs, parsed with `parseExpression()`
+  - its `parseTemplate()` method iterates on tokens to build the final `TemplateNode` AST.
+- `minja::Value` represents a Python-like value
+  - It relies on `nlohmann/json` for primitive values, but does its own JSON dump to be exactly compatible w/ the Jinja / Python implementation of `dict` string representation
+- `minja::chat_template` wraps a template and provides an interface similar to HuggingFace's chat template formatting. It also normalizes the message history to accommodate different expectations from some templates (e.g. `message.tool_calls.function.arguments` is typically expected to be a JSON string representation of the tool call arguments, but some templates expect the arguments object instead)
+- [update_templates_and_goldens.py](./update_templates_and_goldens.py) fetches many templates, and runs them w/ the official Jinja2 library against a set of [tests/contexts](./tests/contexts) to create [tests/goldens](./tests/goldens) files. Then [test-chat-templates](./tests/test-chat-templates.cpp) ensures Minja produces exactly the same output as the goldens.
+
+### Adding new Templates / Building
 
 Prerequisites:
 
