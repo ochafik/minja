@@ -138,22 +138,22 @@ int main() {
         "  {% if true %}Hello{% endif %}  \n"
         "...\n"
         "\n";
-     test_render(
+    test_render(
         trim_tmpl,
         {}, trim_blocks, "\n  Hello...\n");
-     test_render(
+    test_render(
         trim_tmpl,
         {}, {}, "\n  Hello  \n...\n");
-     test_render(
+    test_render(
         trim_tmpl,
         {}, lstrip_blocks, "\nHello  \n...\n");
-     test_render(
+    test_render(
         trim_tmpl,
         {}, lstrip_trim_blocks, "\nHello...\n");
 
     test_render(
         R"({%- set separator = joiner(' | ') -%}
-           {%- for item in ["a", "b", "c"] %}{{ separator() }}{{ item }}{% endfor -%})",
+            {%- for item in ["a", "b", "c"] %}{{ separator() }}{{ item }}{% endfor -%})",
         {}, {}, "a | b | c");
     test_render("a\nb\n", {}, {}, "a\nb");
     test_render("  {{- ' a\n'}}", {}, trim_blocks, " a\n");

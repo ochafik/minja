@@ -58,7 +58,7 @@ Main limitations (non-exhaustive list):
 
 Prerequisites:
 
-- cmake, flake8
+- cmake, flake8, editorconfig-checker
 
 To add new templates, edit [update_templates_and_goldens.py](./update_templates_and_goldens.py) and run it (e.g. w/ [uv](https://github.com/astral-sh/uv)):
 

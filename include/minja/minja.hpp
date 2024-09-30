@@ -38,7 +38,7 @@ struct Options {
 
 /* Values that behave roughly like in Python. */
 class Value : public std::enable_shared_from_this<Value> {
-public:
+  public:
   struct Arguments {
     std::vector<Value> args;
     std::vector<std::pair<std::string, Value>> kwargs;
@@ -159,7 +159,7 @@ private:
     }
   }
 
-public:
+  public:
   Value() {}
   Value(const bool& v) : primitive_(v) {}
   Value(const int64_t & v) : primitive_(v) {}
@@ -540,50 +540,50 @@ static std::string error_location_suffix(const std::string & source, size_t pos)
 }
 
 class Context : public std::enable_shared_from_this<Context> {
- protected:
-  Value values_;
-  std::shared_ptr<Context> parent_;
-public:
-  Context(Value && values, const std::shared_ptr<Context> & parent = nullptr) : values_(std::move(values)), parent_(parent) {
-    if (!values_.is_object()) throw std::runtime_error("Context values must be an object: " + values_.dump());
-  }
-  virtual ~Context() {}
+  protected:
+    Value values_;
+    std::shared_ptr<Context> parent_;
+  public:
+    Context(Value && values, const std::shared_ptr<Context> & parent = nullptr) : values_(std::move(values)), parent_(parent) {
+        if (!values_.is_object()) throw std::runtime_error("Context values must be an object: " + values_.dump());
+    }
+    virtual ~Context() {}
 
-  static std::shared_ptr<Context> builtins();
-  static std::shared_ptr<Context> make(Value && values, const std::shared_ptr<Context> & parent = builtins());
+    static std::shared_ptr<Context> builtins();
+    static std::shared_ptr<Context> make(Value && values, const std::shared_ptr<Context> & parent = builtins());
 
-  std::vector<Value> keys() {
-    return values_.keys();
-  }
-  virtual Value get(const Value & key) {
-    if (values_.contains(key)) return values_.at(key);
-    if (parent_) return parent_->get(key);
-    return Value();
-  }
-  virtual Value & at(const Value & key) {
-    if (values_.contains(key)) return values_.at(key);
-    if (parent_) return parent_->at(key);
-    throw std::runtime_error("Undefined variable: " + key.dump());
-  }
-  virtual bool contains(const Value & key) {
-    if (values_.contains(key)) return true;
-    if (parent_) return parent_->contains(key);
-    return false;
-  }
-  virtual void set(const Value & key, Value & value) {
-    values_.set(key, value);
-  }
+    std::vector<Value> keys() {
+        return values_.keys();
+    }
+    virtual Value get(const Value & key) {
+        if (values_.contains(key)) return values_.at(key);
+        if (parent_) return parent_->get(key);
+        return Value();
+    }
+    virtual Value & at(const Value & key) {
+        if (values_.contains(key)) return values_.at(key);
+        if (parent_) return parent_->at(key);
+        throw std::runtime_error("Undefined variable: " + key.dump());
+    }
+    virtual bool contains(const Value & key) {
+        if (values_.contains(key)) return true;
+        if (parent_) return parent_->contains(key);
+        return false;
+    }
+    virtual void set(const Value & key, Value & value) {
+        values_.set(key, value);
+    }
 };
 
 struct Location {
-  std::shared_ptr<std::string> source;
-  size_t pos;
+    std::shared_ptr<std::string> source;
+    size_t pos;
 };
 
 class Expression {
-protected:
+  protected:
     virtual Value do_evaluate(const std::shared_ptr<Context> & context) const = 0;
-public:
+  public:
     struct Arguments {
         std::vector<std::unique_ptr<Expression>> args;
         std::vector<std::pair<std::string, std::unique_ptr<Expression>>> kwargs;
@@ -629,7 +629,7 @@ public:
 
 class VariableExpr : public Expression {
     std::string name;
-public:
+  public:
     VariableExpr(const Location & location, const std::string& n)
       : Expression(location), name(n) {}
     std::string get_name() const { return name; }
@@ -658,7 +658,7 @@ static void destructuring_assign(const std::vector<std::string> & var_names, con
 enum SpaceHandling { Keep, Strip, StripSpaces, StripNewline };
 
 class TemplateToken {
-public:
+  public:
     enum class Type { Text, Expression, If, Else, Elif, EndIf, For, EndFor, Set, EndSet, Comment, Macro, EndMacro };
 
     static std::string typeToString(Type t) {
@@ -714,7 +714,7 @@ struct ElseTemplateToken : public TemplateToken {
 };
 
 struct EndIfTemplateToken : public TemplateToken {
-   EndIfTemplateToken(const Location & location, SpaceHandling pre, SpaceHandling post) : TemplateToken(Type::EndIf, location, pre, post) {}
+    EndIfTemplateToken(const Location & location, SpaceHandling pre, SpaceHandling post) : TemplateToken(Type::EndIf, location, pre, post) {}
 };
 
 struct MacroTemplateToken : public TemplateToken {
@@ -761,10 +761,10 @@ struct CommentTemplateToken : public TemplateToken {
 
 class TemplateNode {
     Location location_;
-protected:
+  protected:
     virtual void do_render(std::ostringstream & out, const std::shared_ptr<Context> & context) const = 0;
 
-public:
+  public:
     TemplateNode(const Location & location) : location_(location) {}
     void render(std::ostringstream & out, const std::shared_ptr<Context> & context) const {
         try {
@@ -787,7 +787,7 @@ public:
 
 class SequenceNode : public TemplateNode {
     std::vector<std::unique_ptr<TemplateNode>> children;
-public:
+  public:
     SequenceNode(const Location & location, std::vector<std::unique_ptr<TemplateNode>> && c)
       : TemplateNode(location), children(std::move(c)) {}
     void do_render(std::ostringstream & out, const std::shared_ptr<Context> & context) const override {
@@ -797,7 +797,7 @@ public:
 
 class TextNode : public TemplateNode {
     std::string text;
-public:
+  public:
     TextNode(const Location & location, const std::string& t) : TemplateNode(location), text(t) {}
     void do_render(std::ostringstream & out, const std::shared_ptr<Context> &) const override {
       out << text;
@@ -806,7 +806,7 @@ public:
 
 class ExpressionNode : public TemplateNode {
     std::unique_ptr<Expression> expr;
-public:
+  public:
     ExpressionNode(const Location & location, std::unique_ptr<Expression> && e) : TemplateNode(location), expr(std::move(e)) {}
     void do_render(std::ostringstream & out, const std::shared_ptr<Context> & context) const override {
       auto result = expr->evaluate(context);
@@ -822,7 +822,7 @@ public:
 
 class IfNode : public TemplateNode {
     std::vector<std::pair<std::unique_ptr<Expression>, std::unique_ptr<TemplateNode>>> cascade;
-public:
+  public:
     IfNode(const Location & location, std::vector<std::pair<std::unique_ptr<Expression>, std::unique_ptr<TemplateNode>>> && c)
         : TemplateNode(location), cascade(std::move(c)) {}
     void do_render(std::ostringstream & out, const std::shared_ptr<Context> & context) const override {
@@ -846,7 +846,7 @@ class ForNode : public TemplateNode {
     std::unique_ptr<TemplateNode> body;
     bool recursive;
     std::unique_ptr<TemplateNode> else_body;
-public:
+  public:
     ForNode(const Location & location, std::vector<std::string> && var_names, std::unique_ptr<Expression> && iterable,
       std::unique_ptr<Expression> && condition, std::unique_ptr<TemplateNode> && body, bool recursive, std::unique_ptr<TemplateNode> && else_body)
             : TemplateNode(location), var_names(var_names), iterable(std::move(iterable)), condition(std::move(condition)), body(std::move(body)), recursive(recursive), else_body(std::move(else_body)) {}
@@ -926,7 +926,7 @@ class MacroNode : public TemplateNode {
     Expression::Parameters params;
     std::unique_ptr<TemplateNode> body;
     std::unordered_map<std::string, size_t> named_param_positions;
-public:
+  public:
     MacroNode(const Location & location, std::unique_ptr<VariableExpr> && n, Expression::Parameters && p, std::unique_ptr<TemplateNode> && b)
         : TemplateNode(location), name(std::move(n)), params(std::move(p)), body(std::move(b)) {
         for (size_t i = 0; i < params.size(); ++i) {
@@ -974,7 +974,7 @@ class SetNode : public TemplateNode {
     std::vector<std::string> var_names;
     std::unique_ptr<Expression> value;
     std::unique_ptr<TemplateNode> template_value;
-public:
+  public:
     SetNode(const Location & location, const std::string & ns, const std::vector<std::string> & vns, std::unique_ptr<Expression> && v, std::unique_ptr<TemplateNode> && tv)
         : TemplateNode(location), ns(ns), var_names(vns), value(std::move(v)), template_value(std::move(tv)) {
           if (value && template_value) {
@@ -1007,7 +1007,7 @@ class IfExpr : public Expression {
     std::unique_ptr<Expression> condition;
     std::unique_ptr<Expression> then_expr;
     std::unique_ptr<Expression> else_expr;
-public:
+  public:
     IfExpr(const Location & location, std::unique_ptr<Expression> && c, std::unique_ptr<Expression> && t, std::unique_ptr<Expression> && e)
         : Expression(location), condition(std::move(c)), then_expr(std::move(t)), else_expr(std::move(e)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
@@ -1023,7 +1023,7 @@ public:
 
 class LiteralExpr : public Expression {
     Value value;
-public:
+  public:
     LiteralExpr(const Location & location, const Value& v)
       : Expression(location), value(v) {}
     Value do_evaluate(const std::shared_ptr<Context> &) const override { return value; }
@@ -1031,7 +1031,7 @@ public:
 
 class ArrayExpr : public Expression {
     std::vector<std::unique_ptr<Expression>> elements;
-public:
+  public:
     ArrayExpr(const Location & location, std::vector<std::unique_ptr<Expression>> && e)
       : Expression(location), elements(std::move(e)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
@@ -1045,7 +1045,7 @@ public:
 
 class DictExpr : public Expression {
     std::vector<std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>>> elements;
-public:
+  public:
     DictExpr(const Location & location, std::vector<std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>>> && e)
       : Expression(location), elements(std::move(e)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
@@ -1058,7 +1058,7 @@ public:
 };
 
 class SliceExpr : public Expression {
-public:
+  public:
     std::unique_ptr<Expression> start, end;
     SliceExpr(const Location & location, std::unique_ptr<Expression> && s, std::unique_ptr<Expression> && e)
       : Expression(location), start(std::move(s)), end(std::move(e)) {}
@@ -1070,7 +1070,7 @@ public:
 class SubscriptExpr : public Expression {
     std::unique_ptr<Expression> base;
     std::unique_ptr<Expression> index;
-public:
+  public:
     SubscriptExpr(const Location & location, std::unique_ptr<Expression> && b, std::unique_ptr<Expression> && i)
         : Expression(location), base(std::move(b)), index(std::move(i)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
@@ -1099,12 +1099,12 @@ public:
 };
 
 class UnaryOpExpr : public Expression {
-public:
+  public:
     enum class Op { Plus, Minus, LogicalNot };
 private:
     std::unique_ptr<Expression> expr;
     Op op;
-public:
+  public:
     UnaryOpExpr(const Location & location, std::unique_ptr<Expression> && e, Op o)
       : Expression(location), expr(std::move(e)), op(o) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
@@ -1119,13 +1119,13 @@ public:
 };
 
 class BinaryOpExpr : public Expression {
-public:
+  public:
     enum class Op { StrConcat, Add, Sub, Mul, MulMul, Div, DivDiv, Mod, Eq, Ne, Lt, Gt, Le, Ge, And, Or, In, NotIn, Is, IsNot };
 private:
     std::unique_ptr<Expression> left;
     std::unique_ptr<Expression> right;
     Op op;
-public:
+  public:
     BinaryOpExpr(const Location & location, std::unique_ptr<Expression> && l, std::unique_ptr<Expression> && r, Op o)
         : Expression(location), left(std::move(l)), right(std::move(r)), op(o) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
@@ -1221,7 +1221,7 @@ class MethodCallExpr : public Expression {
     std::unique_ptr<Expression> object;
     std::unique_ptr<VariableExpr> method;
     Expression::Arguments args;
-public:
+  public:
     MethodCallExpr(const Location & location, std::unique_ptr<Expression> && obj, std::unique_ptr<VariableExpr> && m, Expression::Arguments && a)
         : Expression(location), object(std::move(obj)), method(std::move(m)), args(std::move(a)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
@@ -1286,7 +1286,7 @@ public:
 };
 
 class CallExpr : public Expression {
-public:
+  public:
     std::unique_ptr<Expression> object;
     Expression::Arguments args;
     CallExpr(const Location & location, std::unique_ptr<Expression> && obj, Expression::Arguments && a)
@@ -1303,7 +1303,7 @@ public:
 
 class FilterExpr : public Expression {
     std::vector<std::unique_ptr<Expression>> parts;
-public:
+  public:
     FilterExpr(const Location & location, std::vector<std::unique_ptr<Expression>> && p)
       : Expression(location), parts(std::move(p)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
@@ -1442,16 +1442,16 @@ private:
       consumeSpaces();
       if (it == end) return nullptr;
       if (*it == '"' || *it == '\'') {
-        auto str = parseString();
-        if (str) return nonstd_make_unique<Value>(*str);
+            auto str = parseString();
+            if (str) return nonstd_make_unique<Value>(*str);
       }
       static std::regex prim_tok(R"(true\b|True\b|false\b|False\b|None\b)");
       auto token = consumeToken(prim_tok);
       if (!token.empty()) {
-        if (token == "true" || token == "True") return nonstd_make_unique<Value>(true);
-        if (token == "false" || token == "False") return nonstd_make_unique<Value>(false);
-        if (token == "None") return nonstd_make_unique<Value>(nullptr);
-        throw std::runtime_error("Unknown constant token: " + token);
+            if (token == "true" || token == "True") return nonstd_make_unique<Value>(true);
+            if (token == "false" || token == "False") return nonstd_make_unique<Value>(false);
+            if (token == "None") return nonstd_make_unique<Value>(nullptr);
+            throw std::runtime_error("Unknown constant token: " + token);
       }
 
       auto number = parseNumber(it, end);
@@ -1462,13 +1462,13 @@ private:
     }
 
     class expression_parsing_error : public std::runtime_error {
-      const CharIterator it;
-     public:
-      expression_parsing_error(const std::string & message, const CharIterator & it)
-        : std::runtime_error(message), it(it) {}
-      size_t get_pos(const CharIterator & begin) const {
-        return std::distance(begin, it);
-      }
+        const CharIterator it;
+      public:
+        expression_parsing_error(const std::string & message, const CharIterator & it)
+            : std::runtime_error(message), it(it) {}
+        size_t get_pos(const CharIterator & begin) const {
+            return std::distance(begin, it);
+        }
     };
 
     bool peekSymbols(const std::vector<std::string> & symbols) const {
@@ -2226,7 +2226,7 @@ private:
         }
     }
 
-public:
+  public:
 
     static std::unique_ptr<TemplateNode> parse(const std::string& template_str, const Options & options) {
         Parser parser(std::make_shared<std::string>(template_str), options);
