@@ -23,6 +23,55 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
     - Please don't submit PRs with such features, they will unfortunately be rejected.
 - Full Jinja compliance (neither syntax-wise, nor filters / tests / globals)
 
+## Usage:
+
+For raw Jinja templating:
+
+```c++
+#include <minja.hpp>
+#include <iostream>
+
+using json = nlohmann::ordered_json;
+
+int main() {
+    auto tmpl = minja::Parser::parse("Hello, {{ location }}!", /* options= */ {});
+    auto context = minja::Context::make(minja::Value(json {
+        {"location", "World"},
+    }));
+    auto result = tmpl->render(context);
+    std::cout << result << std::endl;
+}
+```
+
+To apply a template to a JSON array of `messages` and `tools` (in the HuggingFace standard):
+
+```c++
+#include <chat-template.hpp>
+#include <iostream>
+
+using json = nlohmann::ordered_json;
+
+int main() {
+    minja::chat_template tmpl(
+        "{% for message in messages %}"
+        "{{ '<|' + message['role'] + '|>\\n' + message['content'] + '<|end|>' + '\\n' }}"
+        "{% endfor %}",
+        /* bos_token= */ "<|start|>",
+        /* eos_token= */ "<|end|>"
+    );
+    std::cout << tmpl.apply(
+        json::parse(R"([
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi there"}
+        ])"),
+        json::parse(R"([
+            {"type": "function", "function": {"name": "google_search", "arguments": {"query": "2+2"}}}
+        ])"),
+        /* add_generation_prompt= */ true,
+        /* extra_context= */ {}) << std::endl;
+}
+```
+
 ## Supported features
 
 Models have increasingly complex templates (e.g. [NousResearch/Hermes-3-Llama-3.1](./third_party/templates/NousResearch-Hermes-3-Llama-3.1-70B-tool_use.jinja), [meetkai/functionary-medium-v3.2](./third_party/templates/meetkai-functionary-medium-v3.2.jinja)), so a fair bit of Jinja's language constructs is required to execute their templates properly.
