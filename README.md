@@ -9,7 +9,7 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 ## Design goals:
 
 - Support each and every major LLM found on HuggingFace
-    - See [update_templates_and_goldens.py](./update_templates_and_goldens.py) and [third_party/templates](./third_party/templates) for the list of models currently supported
+    - See `MODEL_IDS` in [tests/CMakeLists.txt](./tests/CMakeLists.txt) for the list of models currently supported
 - Keep codebase small (currently 2.5k LoC) and easy to understand
 - Easy to integrate to projects such as [llama.cpp](https://github.com/ggerganov/llama.cpp):
   - Header-only
@@ -113,21 +113,44 @@ Main limitations (non-exhaustive list):
 
 ## Develop
 
-Prerequisites:
+- Install Prerequisites:
 
-- cmake, flake8, editorconfig-checker
+    - cmake
+    - GCC / clang
+    - flake8
+    - editorconfig-checker
 
-To add new templates, edit [update_templates_and_goldens.py](./update_templates_and_goldens.py) and run it (e.g. w/ [uv](https://github.com/astral-sh/uv)):
+- Optional: test additional templates:
 
-```bash
-uv run update_templates_and_goldens.py
-```
+    - Add their HuggingFace model identifier to `MODEL_IDS` in [tests/CMakeLists.txt](./tests/CMakeLists.txt) (e.g. `meta-llama/Llama-3.2-3B-Instruct`)
+    - For [gated models](https://huggingface.co/docs/transformers.js/en/guides/private) you have access to, first authenticate w/ HuggingFace:
 
-Then build & run the minja tests:
+        ```bash
+        pip install huggingface_hub
+        huggingface-cli login
+        ```
 
-```bash
-rm -fR build && \
-    cmake -B build && \
-    cmake --build build -j && \
-    ctest --test-dir build/tests -j --output-on-failure
-```
+- Build & run tests:
+
+    ```bash
+    rm -fR build && \
+        cmake -B build && \
+        cmake --build build -j && \
+        ctest --test-dir build -j --output-on-failure
+    ```
+
+- If your model's template doesn't run fine, please consider the following before [opening a bug](https://github.com/googlestaging/minja/issues/new):
+
+    - Is the template using any unsupported filter / test / method / global function, and which one(s)?
+    - Is the template publicly available? Non-gated models are more likely to become supported.
+    - Which version of GCC / clang did you compile the tests with? On which OS version?
+    - If you intend to contribute a fix:
+        - Please read [CONTRIBUTING](./CONTRIBUTING.md) first. You'd have to sign a CLA, which your employer may need to accept.
+        - Please test as many gated models as possible
+
+- For bonus points, check the style of your edits with:
+
+    ```bash
+    flake8
+    editorconfig-checker
+    ```

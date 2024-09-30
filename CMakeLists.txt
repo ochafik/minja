@@ -14,23 +14,62 @@ set(CMAKE_CXX_STANDARD 11)
 
 include(FetchContent)
 
+# Fetch nlohmann/json dependency
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
 FetchContent_MakeAvailable(json)
-
 include_directories(include/minja)
 
+# Use ccache if installed
 find_program(CCACHE_PATH ccache)
 if (CCACHE_PATH)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PATH})
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE_PATH})
 endif()
 
+# Release build by default
 if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-enable_testing()
+# Create a python venv w/ the required dependencies
+find_package(Python COMPONENTS Interpreter REQUIRED)
+function(setup_python_environment)
+    set(VENV_DIR "${CMAKE_BINARY_DIR}/venv")
+
+    # Create a virtual environment if it doesnt exist yet
+    if(EXISTS ${VENV_DIR})
+        set(Python_EXECUTABLE ${VENV_DIR}/bin/python PARENT_SCOPE)
+        return()
+    endif()
+
+    execute_process(
+        COMMAND ${Python_EXECUTABLE} -m venv ${VENV_DIR}
+        RESULT_VARIABLE VENV_RESULT
+    )
+    if(NOT VENV_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to create virtual environment")
+    endif()
+
+    if(WIN32)
+        set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
+    else()
+        set(VENV_PYTHON "${VENV_DIR}/bin/python")
+    endif()
+
+    execute_process(
+        COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
+        RESULT_VARIABLE PIP_RESULT
+    )
+    if(NOT PIP_RESULT EQUAL 0)
+        message(FATAL_ERROR "Failed to install Python dependencies")
+    endif()
+
+    set(Python_EXECUTABLE ${VENV_PYTHON} PARENT_SCOPE)
+endfunction()
+setup_python_environment()
 
 add_subdirectory(examples)
+
+enable_testing()
 add_subdirectory(tests)
