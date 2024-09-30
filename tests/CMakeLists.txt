@@ -7,11 +7,31 @@
 # SPDX-License-Identifier: MIT
 
 add_executable(test-syntax test-syntax.cpp)
-target_link_libraries(test-syntax PRIVATE nlohmann_json::nlohmann_json)
+set_target_properties(test-syntax PROPERTIES CXX_STANDARD 17)
+target_link_libraries(test-syntax PRIVATE
+    nlohmann_json::nlohmann_json
+    gtest_main
+    gmock
+)
 add_test(NAME test-syntax COMMAND $<TARGET_FILE:test-syntax>)
+gtest_discover_tests(test-syntax)
+
+# add_executable(test-fuzz test-fuzz.cpp)
+# set_target_properties(test-fuzz PROPERTIES CXX_STANDARD 17)
+# target_link_libraries(test-fuzz PRIVATE
+#     nlohmann_json::nlohmann_json
+#     fuzztest
+#     fuzztest::domain
+#     json_grammar
+#     gtest
+# )
+# link_fuzztest(test-fuzz)
+# gtest_discover_tests(test-fuzz)
 
 add_executable(test-chat-template test-chat-template.cpp)
+set_target_properties(test-chat-template PROPERTIES CXX_STANDARD 17)
 target_link_libraries(test-chat-template PRIVATE nlohmann_json::nlohmann_json)
+# gtest_discover_tests(test-chat-template)
 
 set(MODEL_IDS
     # List of model IDs to test the chat template of.

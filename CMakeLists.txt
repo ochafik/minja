@@ -10,14 +10,21 @@ cmake_minimum_required(VERSION 3.14)
 project(minja VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Note: tests require C++14 because google/fuzztest depends on a version of gtest that requires it
+# (and we don't want to use an older version of fuzztest)
+# Examples are built w/ C++11 to check the compatibility of the library.
 set(CMAKE_CXX_STANDARD 11)
 
 include(FetchContent)
 
-# Fetch nlohmann/json dependency
-FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
+# Fetch nlohmann/json
+FetchContent_Declare(json URL https://github.com/nlohmann/json/archive/refs/heads/develop.zip)
 FetchContent_MakeAvailable(json)
-include_directories(include/minja)
+
+# Fetch google/fuzztest (and indirectly, gtest)
+FetchContent_Declare(fuzztest URL https://github.com/google/fuzztest/archive/refs/heads/main.zip)
+FetchContent_MakeAvailable(fuzztest)
 
 # Use ccache if installed
 find_program(CCACHE_PATH ccache)
@@ -68,6 +75,14 @@ function(setup_python_environment)
     set(Python_EXECUTABLE ${VENV_PYTHON} PARENT_SCOPE)
 endfunction()
 setup_python_environment()
+
+include_directories(
+    include/minja
+    ${gtest_SOURCE_DIR}/include
+    ${json_SOURCE_DIR}/include
+    ${fuzztest_SOURCE_DIR}
+    ${fuzztest_BINARY_DIR}
+)
 
 add_subdirectory(examples)
 
