@@ -25,7 +25,9 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 ## Usage:
 
-For raw Jinja templating:
+See API in [minja/minja.hpp](./include/minja/chat-template.hpp) and [minja/chat-template.h](./include/minja/chat-template.hpp) (experimental).
+
+For raw Jinja templating (see [examples/raw.cpp](./examples/raw.cpp)):
 
 ```c++
 #include <minja.hpp>
@@ -43,7 +45,7 @@ int main() {
 }
 ```
 
-To apply a template to a JSON array of `messages` and `tools` (in the HuggingFace standard):
+To apply a template to a JSON array of `messages` and `tools` in the HuggingFace standard (see [examples/chat-template.cpp](./examples/chat-template.cpp)):
 
 ```c++
 #include <chat-template.hpp>
@@ -71,6 +73,8 @@ int main() {
         /* extra_context= */ {}) << std::endl;
 }
 ```
+
+(Note that some template quirks are worked around by [minja/chat-template.hpp](./include/minja/chat-template.hpp) so that all templates can be used the same way)
 
 ## Supported features
 
