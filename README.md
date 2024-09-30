@@ -10,7 +10,7 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 - Support each and every major LLM found on HuggingFace
     - See [update_templates_and_goldens.py](./update_templates_and_goldens.py) and [third_party/templates](./third_party/templates) for the list of models currently supported
-- Keep codebase small (currently 2.5k LoC) and easy to understand
+- Keep codebase small (currently 2.5k LoC) and easy to maintain / extend
 - Easy to integrate to projects such as [llama.cpp](https://github.com/ggerganov/llama.cpp):
   - Header-only
   - C++11
