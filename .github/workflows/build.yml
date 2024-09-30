@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+    paths: ['.github/workflows/build.yml', '**/CMakeLists.txt', '**/*.hpp', '**/*.cpp']
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: ['.github/workflows/build.yml', '**/CMakeLists.txt', '**/*.hpp', '**/*.cpp']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build_and_test:
+    strategy:
+      matrix:
+        os: [macos-12, macos-13, macos-14, macos-latest, ubuntu-22.04, ubuntu-latest, windows-2019, windows-latest]
+    runs-on:  ${{ matrix.os }}
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Configure CMake
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build/tests --verbose
