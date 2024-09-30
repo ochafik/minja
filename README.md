@@ -2,7 +2,7 @@
 
 _**This is not an official Google product**_
 
-Minja is a minimalistic reimplementation of the [Jinja](https://github.com/pallets/jinja/) templating engine for C++ LLM projects (such as [llama.cpp](https://github.com/ggerganov/llama.cpp)).
+Minja is a minimalistic reimplementation of the [Jinja](https://github.com/pallets/jinja/) templating engine to integrate in/with C++ LLM projects (such as [llama.cpp](https://github.com/ggerganov/llama.cpp) or [gemma.cpp](https://github.com/google/gemma.cpp)).
 
 It is **not general purpose**: it includes just what’s needed for actual chat templates (very limited set of filters, tests and language features). Users with different needs should look at third-party alternatives such as [Jinja2Cpp](https://github.com/jinja2cpp/Jinja2Cpp), [Jinja2CppLight](https://github.com/hughperkins/Jinja2CppLight), or [inja](https://github.com/pantor/inja) (none of which we endorse).
 
@@ -11,7 +11,7 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 - Support each and every major LLM found on HuggingFace
     - See [update_templates_and_goldens.py](./update_templates_and_goldens.py) and [third_party/templates](./third_party/templates) for the list of models currently supported
 - Keep codebase small (currently 2.5k LoC) and easy to maintain / extend
-- Easy to integrate to projects such as [llama.cpp](https://github.com/ggerganov/llama.cpp):
+- Easy to integrate to projects such as [llama.cpp](https://github.com/ggerganov/llama.cpp) or [gemma.cpp](https://github.com/google/gemma.cpp):
   - Header-only
   - C++11
   - Only depend on [nlohmann::json](https://github.com/nlohmann/json) (no Boost)
