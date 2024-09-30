@@ -4,7 +4,7 @@ _**This is not an official Google product**_
 
 Minja is a minimalistic reimplementation of the [Jinja](https://github.com/pallets/jinja/) templating engine for C++ LLM projects (such as [llama.cpp](https://github.com/ggerganov/llama.cpp)).
 
-It is **not general purpose**: it includes just what’s needed for actual chat templates (very limited set of filters, tests and language features). Users with different needs should look at third-party alternatives such as [Jinja2Cpp](https://github.com/jinja2cpp/Jinja2Cpp).
+It is **not general purpose**: it includes just what’s needed for actual chat templates (very limited set of filters, tests and language features). Users with different needs should look at third-party alternatives such as [Jinja2Cpp](https://github.com/jinja2cpp/Jinja2Cpp), [Jinja2CppLight](https://github.com/hughperkins/Jinja2CppLight), [inja](https://github.com/pantor/inja), none of which we endorse.
 
 ## Design goals:
 
@@ -55,7 +55,7 @@ Main limitations (non-exhaustive list):
 - Simplify two-pass parsing
     - Pass tokens to IfNode and such
 - Macro nested set scope = global?
-- List in / link to https://jbmoelker.github.io/jinja-compat-tests/
+- Get listed in https://jbmoelker.github.io/jinja-compat-tests/, https://en.cppreference.com/w/cpp/links/libs
 
 ## Develop
 
