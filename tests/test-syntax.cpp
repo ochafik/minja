@@ -44,9 +44,6 @@ const minja::Options lstrip_trim_blocks {
 };
 
 TEST(SyntaxTest, SimpleCases) {
-// int main(int argc, char** argv) {
-//     ::testing::InitGoogleTest(&argc, argv);
-
     EXPECT_EQ(
         "a\n  b\n|  a\n  b\n",
         render("{% set txt = 'a\\nb\\n' %}{{ txt | indent(2) }}|{{ txt | indent(2, first=true) }}", {}, {}));
@@ -249,11 +246,10 @@ TEST(SyntaxTest, SimpleCases) {
         )", {}, {}));
     EXPECT_EQ(R"(
             <p><input type="text" name="username" value="" size="20"></p>
-            <p>
-            <input type="password" name="password" value="" size="20"></p>)",
+            <p><input type="password" name="password" value="" size="20"></p>)",
             render(R"(
             {% macro input(name, value='', type='text', size=20) -%}
-            <input type="{{ type }}" name="{{ name }}" value="{{ value|e }}" size="{{ size }}">
+                <input type="{{ type }}" name="{{ name }}" value="{{ value|e }}" size="{{ size }}">
             {%- endmacro -%}
 
             <p>{{ input('username') }}</p>
@@ -367,9 +363,6 @@ TEST(SyntaxTest, SimpleCases) {
         "",
         render("{% if 1 %}{% elif 1 %}{% else %}{% endif %}", {}, {}));
 
-    // Error cases
-    // EXPECT_THAT([]() { render(...);} ThrowsMessage<std::runtime_error>(HasSubstr("message")));
-
     auto expect_throws_with_message_substr = [](const std::function<void()> & fn, const std::string & expected_substr) {
         EXPECT_THAT([=]() { fn(); }, testing::Throws<std::runtime_error>(Property(&std::runtime_error::what, testing::HasSubstr(expected_substr))));
     };
@@ -386,15 +379,10 @@ TEST(SyntaxTest, SimpleCases) {
     expect_throws_with_message_substr([]() { render("{% if 1 %}{% else %}", {}, {}); }, "Unterminated if");
     expect_throws_with_message_substr([]() { render("{% if 1 %}{% else %}{% elif 1 %}{% endif %}", {}, {}); }, "Unterminated if");
 
-    // expect_throws_with_message_substr([]() { render("{{ (a.b.c) }}", {{"a", json({{"b", {{"c", 3}}}})}}, {}); }, "'a' is not defined");
+    EXPECT_EQ(
+        "3",
+        render("{{ (a.b.c) }}", {{"a", json({{"b", {{"c", 3}}}})}}, {}));
 
+    // expect_throws_with_message_substr([]() { render("{{ a.b }}", {}, {}); }, "'a' is not defined");
     // expect_throws_with_message_substr([]() { render("{{ raise_exception('hey') }}", {}, {}); }, "hey");
-
-    // return 0;
 }
-
-// int main(int argc, char** argv) {
-//     testing::InitGoogle(argv[0], &argc, &argv, true);
-//     // ::testing::FLAGS_gtest_death_test_style = "fast";
-//     return RUN_ALL_TESTS();
-// }
