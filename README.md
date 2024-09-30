@@ -1,8 +1,8 @@
-# minja.hpp - A minimalistic Jinja templating engine for LLM chat templates
+# minja.hpp - A minimalistic C++ Jinja templating engine for LLM chat templates
 
 _**This is not an official Google product**_
 
-Minja is a minimalistic reimplementation of the [Jinja](https://github.com/pallets/jinja/) templating engine for C++ LLM projects (such as [llama.cpp](https://github.com/ggerganov/llama.cpp)).
+Minja is a minimalistic reimplementation of the [Jinja](https://github.com/pallets/jinja/) templating engine to integrate in/with C++ LLM projects (such as [llama.cpp](https://github.com/ggerganov/llama.cpp) or [gemma.cpp](https://github.com/google/gemma.cpp)).
 
 It is **not general purpose**: it includes just what’s needed for actual chat templates (very limited set of filters, tests and language features). Users with different needs should look at third-party alternatives such as [Jinja2Cpp](https://github.com/jinja2cpp/Jinja2Cpp), [Jinja2CppLight](https://github.com/hughperkins/Jinja2CppLight), or [inja](https://github.com/pantor/inja) (none of which we endorse).
 
@@ -10,11 +10,11 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 - Support each and every major LLM found on HuggingFace
     - See `MODEL_IDS` in [tests/CMakeLists.txt](./tests/CMakeLists.txt) for the list of models currently supported
-- Keep codebase small (currently 2.5k LoC) and easy to understand
-- Easy to integrate to projects such as [llama.cpp](https://github.com/ggerganov/llama.cpp):
+- Easy to integrate to/with projects such as [llama.cpp](https://github.com/ggerganov/llama.cpp) or [gemma.cpp](https://github.com/google/gemma.cpp):
   - Header-only
   - C++11
   - Only depend on [nlohmann::json](https://github.com/nlohmann/json) (no Boost)
+  - Keep codebase small (currently 2.5k LoC) and easy to understand
 - *Decent* performance compared to Python.
 
 ## Non-goals:
@@ -111,7 +111,19 @@ Main limitations (non-exhaustive list):
 - Macro nested set scope = global?
 - Get listed in https://jbmoelker.github.io/jinja-compat-tests/, https://en.cppreference.com/w/cpp/links/libs
 
-## Develop
+## Developer corner
+
+### Design overview
+
+- `minja::Parser` does two-phased parsing:
+  - its `tokenize()` method creates coarse template "tokens" (plain text section, or expression blocks or opening / closing blocks). Tokens may have nested expressions ASTs, parsed with `parseExpression()`
+  - its `parseTemplate()` method iterates on tokens to build the final `TemplateNode` AST.
+- `minja::Value` represents a Python-like value
+  - It relies on `nlohmann/json` for primitive values, but does its own JSON dump to be exactly compatible w/ the Jinja / Python implementation of `dict` string representation
+- `minja::chat_template` wraps a template and provides an interface similar to HuggingFace's chat template formatting. It also normalizes the message history to accommodate different expectations from some templates (e.g. `message.tool_calls.function.arguments` is typically expected to be a JSON string representation of the tool call arguments, but some templates expect the arguments object instead)
+- [update_templates_and_goldens.py](./update_templates_and_goldens.py) fetches many templates, and runs them w/ the official Jinja2 library against a set of [tests/contexts](./tests/contexts) to create [tests/goldens](./tests/goldens) files. Then [test-chat-templates](./tests/test-chat-templates.cpp) ensures Minja produces exactly the same output as the goldens.
+
+### Adding new Templates / Building
 
 - Install Prerequisites:
 
