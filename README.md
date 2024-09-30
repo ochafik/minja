@@ -21,7 +21,7 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 - Additional features from Jinja that aren't used by the template(s) of any major LLM (no feature creep!)
     - Please don't submit PRs with such features, they will unfortunately be rejected.
-- Full Jinja compliance
+- Full Jinja compliance (neither syntax-wise, nor filters / tests / globals)
 
 ## Supported features
 
