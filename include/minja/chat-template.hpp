@@ -9,7 +9,7 @@
 #pragma once
 
 #include "minja.hpp"
-#include <nlohmann/json.hpp>
+#include <json.hpp>
 #include <string>
 #include <vector>
 
