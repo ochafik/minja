@@ -29,7 +29,7 @@ class chat_template {
     std::string _source;
     std::string _bos_token;
     std::string _eos_token;
-    std::unique_ptr<minja::TemplateNode> _template_root;
+    std::shared_ptr<minja::TemplateNode> _template_root;
 
   public:
     chat_template(const std::string & source, const std::string & bos_token, const std::string & eos_token)
