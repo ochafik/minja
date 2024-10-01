@@ -184,3 +184,7 @@ Main limitations (non-exhaustive list):
     flake8
     editorconfig-checker
     ```
+
+## Privacy Info
+
+This library doesn't store anything by itself, it doesn't access files or the web, it only transforms a template (string) and context (json) into a formatted string.
