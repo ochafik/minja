@@ -131,6 +131,7 @@ Main limitations (non-exhaustive list):
 
     - cmake
     - GCC / clang
+    - python 3.8+ (for tests)
     - flake8
     - editorconfig-checker
 
