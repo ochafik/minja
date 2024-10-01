@@ -5,5 +5,5 @@ exclude =
     thirdparty,
     .git,
     __pycache__,
-    build
+    build*
 # max-complexity = 10

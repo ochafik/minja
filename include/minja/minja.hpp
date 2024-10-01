@@ -1430,7 +1430,7 @@ private:
         std::string str(start, it);
         try {
           return json::parse(str);
-        } catch (json::parse_error& e) {
+        } catch (json::exception& e) {
           throw std::runtime_error("Failed to parse number: '" + str + "' (" + std::string(e.what()) + ")");
           return json();
         }

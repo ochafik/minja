@@ -7,10 +7,16 @@
 # SPDX-License-Identifier: MIT
 
 add_executable(test-syntax test-syntax.cpp)
-target_link_libraries(test-syntax PRIVATE nlohmann_json::nlohmann_json)
-add_test(NAME test-syntax COMMAND $<TARGET_FILE:test-syntax>)
+set_target_properties(test-syntax PROPERTIES CXX_STANDARD 17)
+target_link_libraries(test-syntax PRIVATE
+    nlohmann_json::nlohmann_json
+    gtest_main
+    gmock
+)
+gtest_discover_tests(test-syntax)
 
 add_executable(test-chat-template test-chat-template.cpp)
+set_target_properties(test-chat-template PROPERTIES CXX_STANDARD 17)
 target_link_libraries(test-chat-template PRIVATE nlohmann_json::nlohmann_json)
 
 set(MODEL_IDS
@@ -73,3 +79,14 @@ foreach(test_case ${CHAT_TEMPLATE_TEST_CASES})
     string(REGEX REPLACE "^[^ ]+/([^ /]+)\\.[^.]+$" "\\1" test_name "${last_arg}")
     add_test(NAME ${test_name} COMMAND $<TARGET_FILE:test-chat-template> ${test_args})
 endforeach()
+
+if (FUZZTEST_FUZZING_MODE)
+    message(STATUS "Fuzzing mode enabled")
+    fuzztest_setup_fuzzing_flags()
+endif()
+add_executable(test-fuzz test-fuzz.cpp)
+set_target_properties(test-fuzz PROPERTIES CXX_STANDARD 17)
+target_include_directories(test-fuzz PRIVATE ${fuzztest_BINARY_DIR})
+target_link_libraries(test-fuzz PRIVATE nlohmann_json::nlohmann_json)
+link_fuzztest(test-fuzz)
+gtest_discover_tests(test-fuzz)

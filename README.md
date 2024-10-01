@@ -101,9 +101,11 @@ Main limitations (non-exhaustive list):
 
 ## Roadmap / TODOs
 
-- Setup github CI
 - Fix known issues w/ CRLF on Windows
-- Setup fuzzing w/ https://github.com/google/fuzztest
+- Improve fuzzing coverage:
+    - use thirdparty jinja grammar to guide exploration of inputs (or implement prettification of internal ASTs and use them to generate arbitrary values)
+    - fuzz each filter / test
+- Measure / track test coverage
 - Setup performance tests
 - Integrate to llama.cpp: https://github.com/ggerganov/llama.cpp/pull/9639
 - Simplify two-pass parsing
@@ -149,6 +151,22 @@ Main limitations (non-exhaustive list):
         cmake -B build && \
         cmake --build build -j && \
         ctest --test-dir build -j --output-on-failure
+    ```
+
+- Run fuzzing tests in [fuzzing mode](https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md#fuzzing-mode) (running forever; **[won't work](https://github.com/google/fuzztest/issues/179) on MSVC or MacOS**:
+
+    ```bash
+    rm -fR buildFuzz && \
+        CC=clang CXX=clang++ cmake -B buildFuzz -DCMAKE_BUILD_TYPE=RelWithDebug -DFUZZTEST_FUZZING_MODE=on && \
+        cmake --build buildFuzz -j
+    ```
+
+    Then run any of the following fuzz commands:
+
+    ```bash
+    buildFuzz/test-fuzz --fuzz=JinjaFuzzTest.TestRenderJson
+    buildFuzz/test-fuzz --fuzz=JinjaFuzzTest.TestChatTemplate
+    buildFuzz/test-fuzz --fuzz=JinjaFuzzTest.TestRender
     ```
 
 - If your model's template doesn't run fine, please consider the following before [opening a bug](https://github.com/googlestaging/minja/issues/new):
