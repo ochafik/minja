@@ -809,6 +809,7 @@ class ExpressionNode : public TemplateNode {
 public:
     ExpressionNode(const Location & location, std::shared_ptr<Expression> && e) : TemplateNode(location), expr(std::move(e)) {}
     void do_render(std::ostringstream & out, const std::shared_ptr<Context> & context) const override {
+      if (!expr) throw std::runtime_error("ExpressionNode.expr is null");
       auto result = expr->evaluate(context);
       if (result.is_string()) {
           out << result.get<std::string>();
@@ -832,6 +833,7 @@ public:
             enter_branch = branch.first->evaluate(context).to_bool();
           }
           if (enter_branch) {
+            if (!branch.second) throw std::runtime_error("IfNode.cascade.second is null");
               branch.second->render(out, context);
               return;
           }
@@ -853,6 +855,8 @@ public:
 
     void do_render(std::ostringstream & out, const std::shared_ptr<Context> & context) const override {
       // https://jinja.palletsprojects.com/en/3.0.x/templates/#for
+      if (!iterable) throw std::runtime_error("ForNode.iterable is null");
+      if (!body) throw std::runtime_error("ForNode.body is null");
 
       auto iterable_value = iterable->evaluate(context);
       Value::CallableType loop_function;
@@ -937,6 +941,8 @@ public:
         }
     }
     void do_render(std::ostringstream &, const std::shared_ptr<Context> & macro_context) const override {
+        if (!name) throw std::runtime_error("MacroNode.name is null");
+        if (!body) throw std::runtime_error("MacroNode.body is null");
         auto callable = Value::callable([&](const std::shared_ptr<Context> & context, Value::Arguments & args) {
             auto call_context = macro_context;
             std::vector<bool> param_set(params.size(), false);
@@ -977,6 +983,7 @@ public:
     SetNode(const Location & location, const std::string & ns, const std::vector<std::string> & vns, std::shared_ptr<Expression> && v)
         : TemplateNode(location), ns(ns), var_names(vns), value(std::move(v)) {}
     void do_render(std::ostringstream &, const std::shared_ptr<Context> & context) const override {
+      if (!value) throw std::runtime_error("SetNode.value is null");
       if (!ns.empty()) {
         if (var_names.size() != 1) {
           throw std::runtime_error("Namespaced set only supports a single variable name");
@@ -999,6 +1006,7 @@ public:
     SetTemplateNode(const Location & location, const std::string & name, std::shared_ptr<TemplateNode> && tv)
         : TemplateNode(location), name(name), template_value(std::move(tv)) {}
     void do_render(std::ostringstream &, const std::shared_ptr<Context> & context) const override {
+      if (!template_value) throw std::runtime_error("SetTemplateNode.template_value is null");
       Value value { template_value->render(context) };
       context->set(name, value);
     }
@@ -1012,6 +1020,8 @@ public:
     IfExpr(const Location & location, std::shared_ptr<Expression> && c, std::shared_ptr<Expression> && t, std::shared_ptr<Expression> && e)
         : Expression(location), condition(std::move(c)), then_expr(std::move(t)), else_expr(std::move(e)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
+      if (!condition) throw std::runtime_error("IfExpr.condition is null");
+      if (!then_expr) throw std::runtime_error("IfExpr.then_expr is null");
       if (condition->evaluate(context).to_bool()) {
         return then_expr->evaluate(context);
       }
@@ -1038,6 +1048,7 @@ public:
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
         auto result = Value::array();
         for (const auto& e : elements) {
+            if (!e) throw std::runtime_error("Array element is null");
             result.push_back(e->evaluate(context));
         }
         return result;
@@ -1052,6 +1063,8 @@ public:
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
         auto result = Value::object();
         for (const auto& e : elements) {
+            if (!e.first) throw std::runtime_error("Dict key is null");
+            if (!e.second) throw std::runtime_error("Dict value is null");
             result.set(e.first->evaluate(context), e.second->evaluate(context));
         }
         return result;
@@ -1075,6 +1088,8 @@ public:
     SubscriptExpr(const Location & location, std::shared_ptr<Expression> && b, std::shared_ptr<Expression> && i)
         : Expression(location), base(std::move(b)), index(std::move(i)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
+        if (!base) throw std::runtime_error("SubscriptExpr.base is null");
+        if (!index) throw std::runtime_error("SubscriptExpr.index is null");
         auto target_value = base->evaluate(context);
         if (auto slice = dynamic_cast<SliceExpr*>(index.get())) {
           if (!target_value.is_array()) throw std::runtime_error("Subscripting non-array");
@@ -1109,6 +1124,7 @@ public:
     UnaryOpExpr(const Location & location, std::shared_ptr<Expression> && e, Op o)
       : Expression(location), expr(std::move(e)), op(o) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
+        if (!expr) throw std::runtime_error("UnaryOpExpr.expr is null");
         auto e = expr->evaluate(context);
         switch (op) {
             case Op::Plus: return e;
@@ -1130,6 +1146,8 @@ public:
     BinaryOpExpr(const Location & location, std::shared_ptr<Expression> && l, std::shared_ptr<Expression> && r, Op o)
         : Expression(location), left(std::move(l)), right(std::move(r)), op(o) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
+        if (!left) throw std::runtime_error("BinaryOpExpr.left is null");
+        if (!right) throw std::runtime_error("BinaryOpExpr.right is null");
         auto l = left->evaluate(context);
 
         auto do_eval = [&](const Value & l) -> Value {
@@ -1226,6 +1244,8 @@ public:
     MethodCallExpr(const Location & location, std::shared_ptr<Expression> && obj, std::shared_ptr<VariableExpr> && m, Expression::Arguments && a)
         : Expression(location), object(std::move(obj)), method(std::move(m)), args(std::move(a)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
+        if (!object) throw std::runtime_error("MethodCallExpr.object is null");
+        if (!method) throw std::runtime_error("MethodCallExpr.method is null");
         auto obj = object->evaluate(context);
         if (obj.is_array()) {
           if (method->get_name() == "append") {
@@ -1293,6 +1313,7 @@ public:
     CallExpr(const Location & location, std::shared_ptr<Expression> && obj, Expression::Arguments && a)
         : Expression(location), object(std::move(obj)), args(std::move(a)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
+        if (!object) throw std::runtime_error("CallExpr.object is null");
         auto obj = object->evaluate(context);
         if (!obj.is_callable()) {
           throw std::runtime_error("Object is not callable: " + obj.dump(2));
@@ -1311,6 +1332,7 @@ public:
         Value result;
         bool first = true;
         for (const auto& part : parts) {
+          if (!part) throw std::runtime_error("FilterExpr.part is null");
           if (first) {
             first = false;
             result = part->evaluate(context);
