@@ -1379,8 +1379,8 @@ private:
       return true;
     }
 
-    std::shared_ptr<std::string> parseString() {
-      auto doParse = [&](char quote) -> std::shared_ptr<std::string> {
+    std::unique_ptr<std::string> parseString() {
+      auto doParse = [&](char quote) -> std::unique_ptr<std::string> {
         if (it == end || *it != quote) return nullptr;
         std::string result;
         bool escape = false;
@@ -1406,7 +1406,7 @@ private:
             escape = true;
           } else if (*it == quote) {
               ++it;
-            return std::make_shared<std::string>(result);
+            return nonstd_make_unique<std::string>(std::move(result));
           } else {
             result += *it;
           }
