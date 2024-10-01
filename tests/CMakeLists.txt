@@ -65,7 +65,7 @@ set(MODEL_IDS
 file(GLOB CONTEXT_FILES "${CMAKE_SOURCE_DIR}/tests/contexts/*.json")
 execute_process(
     COMMAND ${Python_EXECUTABLE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/fetch_templates_and_goldens.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/../scripts/fetch_templates_and_goldens.py
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CONTEXT_FILES}
         ${MODEL_IDS}

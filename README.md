@@ -25,6 +25,8 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 ## Usage:
 
+This library is header-only: just copy the header(s) you need, make sure to use a compiler that handles C++11 and you're done. Oh, and get [nlohmann::json](https://github.com/nlohmann/json)'s `json.hpp` in your include path.
+
 See API in [minja/minja.hpp](./include/minja/chat-template.hpp) and [minja/chat-template.h](./include/minja/chat-template.hpp) (experimental).
 
 For raw Jinja templating (see [examples/raw.cpp](./examples/raw.cpp)):
@@ -145,7 +147,7 @@ Main limitations (non-exhaustive list):
         huggingface-cli login
         ```
 
-- Build & run tests:
+- Build & run tests (shorthand: `./scripts/run_tests.sh`):
 
     ```bash
     rm -fR build && \
@@ -154,21 +156,37 @@ Main limitations (non-exhaustive list):
         ctest --test-dir build -j --output-on-failure
     ```
 
-- Run fuzzing tests in [fuzzing mode](https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md#fuzzing-mode) (running forever; **[won't work](https://github.com/google/fuzztest/issues/179) on MSVC or MacOS**:
+- Fuzzing tests
 
-    ```bash
-    rm -fR buildFuzz && \
-        CC=clang CXX=clang++ cmake -B buildFuzz -DCMAKE_BUILD_TYPE=RelWithDebug -DFUZZTEST_FUZZING_MODE=on && \
-        cmake --build buildFuzz -j
-    ```
+    - Note: `fuzztest` **[doesn't work](https://github.com/google/fuzztest/issues/179)** natively on Windows or MacOS.
 
-    Then run any of the following fuzz commands:
+        <details>
+        <summary>Show instructions to run it inside a Docker container</summary>
 
-    ```bash
-    buildFuzz/test-fuzz --fuzz=JinjaFuzzTest.TestRenderJson
-    buildFuzz/test-fuzz --fuzz=JinjaFuzzTest.TestChatTemplate
-    buildFuzz/test-fuzz --fuzz=JinjaFuzzTest.TestRender
-    ```
+        Beware of Docker Desktop's licensing: you might want to check out alternatives such as [colima](https://github.com/abiosoft/colima) (we'll still use the docker *client* in the example below).
+
+        ```bash
+        docker run --rm -it -v $PWD:/src:rw $( echo "
+            FROM python:3.12-slim-bookworm
+            COPY requirements.txt /tmp
+            RUN apt update && \
+                apt install -y cmake clang ccache git python3 python-is-python3 python3-pip && \
+                apt-get clean && \
+                rm -rf /var/lib/apt/lists/*
+            RUN pip install setuptools pip --upgrade --force-reinstall
+            RUN pip install -r /tmp/requirements.txt
+            CMD /usr/bin/bash
+            WORKDIR /src
+        " | docker build . -f - -q )
+        ```
+
+        </details>
+
+    - Build in [fuzzing mode](https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md#fuzzing-mode) & run all fuzzing tests (optionally, set a higher `TIMEOUT` as env var):
+
+        ```bash
+        ./scripts/run_fuzzing_mode.sh
+        ```
 
 - If your model's template doesn't run fine, please consider the following before [opening a bug](https://github.com/googlestaging/minja/issues/new):
 
