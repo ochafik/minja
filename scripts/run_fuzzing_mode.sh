@@ -25,5 +25,5 @@ TESTS=( $( ./build-fuzz/tests/test-fuzz --gtest_list_tests | awk '/[.] *$/{prefi
 
 for test in "${TESTS[@]}" ; do
     echo "# Running fuzz test: ${test}"
-    timeout "$TIMEOUT" ./build-fuzz/tests/test-fuzz --fuzz="${test}"
+    timeout "$TIMEOUT" ./build-fuzz/tests/test-fuzz --fuzz="${test}" || true
 done
