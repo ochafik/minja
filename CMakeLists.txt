@@ -76,12 +76,16 @@ function(setup_python_environment)
 endfunction()
 setup_python_environment()
 
+find_program(CPPCHECK cppcheck)
+if(CPPCHECK)
+  set(CMAKE_CXX_CPPCHECK "${CPPCHECK}" -i ${json_SOURCE_DIR}/include/nlohmann/json.hpp)
+  message(STATUS "cppcheck found: ${CPPCHECK}")
+endif()
+
+message(STATUS "${fuzztest_BINARY_DIR}: ${${fuzztest_BINARY_DIR}}")
 include_directories(
     include/minja
-    ${gtest_SOURCE_DIR}/include
     ${json_SOURCE_DIR}/include
-    ${fuzztest_SOURCE_DIR}
-    ${fuzztest_BINARY_DIR}
 )
 
 add_subdirectory(examples)

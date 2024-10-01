@@ -26,7 +26,6 @@ static std::string render(const std::string & template_str, const json & binding
     return actual;
 }
 
-
 const minja::Options lstrip_blocks {
     .trim_blocks = false,
     .lstrip_blocks = true,

@@ -5,6 +5,7 @@
     license that can be found in the LICENSE file or at
     https://opensource.org/licenses/MIT.
 */
+// SPDX-License-Identifier: MIT
 #include <fuzztest/fuzztest.h>
 #include <fuzztest/grammars/json_grammar.h>
 #include <gtest/gtest.h>
@@ -14,69 +15,73 @@
 #include <sstream>
 #include <stdexcept>
 
-// Helper function to check if a string is valid JSON
-bool isValidJson(const std::string& str) {
+using json = nlohmann::ordered_json;
+
+static std::string render(const std::string & template_str, const json & bindings, const minja::Options & options) {
+    auto root = minja::Parser::parse(template_str, options);
+    auto context = minja::Context::make(bindings);
+    std::string actual;
     try {
-        nlohmann::json::parse(str);
-        return true;
-    } catch (nlohmann::json::parse_error&) {
-        return false;
+        actual = root->render(context);
+    } catch (const std::runtime_error & e) {
+        actual = "ERROR: " + std::string(e.what());
     }
+    return actual;
 }
 
-// Test raw Jinja templating
-void TestRawJinjaTemplating(const std::string& template_str, const std::string& json_str) {
-    if (!isValidJson(json_str)) return; // Skip invalid JSON inputs
+// Dumps `{"a": 1}` as `"{\"a\": 1}"`, unlike nlohmann::json::dump which would dump it as `"{\"a\":1}"`.
+static std::string dump(const json & j) {
+  return minja::Value(j).dump(-1, /* to_json= */ true);
+}
 
+void TestRenderDoesNotCrash(const std::string& template_str, const std::string& json_str) {
     try {
-        auto tmpl = minja::Parser::parse(template_str, {});
-        auto json_data = nlohmann::json::parse(json_str);
-        auto context = minja::Context::make(minja::Value(json_data));
-        auto result = tmpl->render(context);
-
-        // Basic sanity checks
-        ASSERT_FALSE(result.empty());
-        ASSERT_LE(result.length(), template_str.length() + json_str.length());
+        auto unused = render(template_str, json::parse(json_str), {});
     } catch (const std::exception& e) {
-        // It's okay if parsing fails for some inputs, but we don't want crashes
         std::cerr << "Exception caught: " << e.what() << std::endl;
     }
 }
 
-// Test chat template functionality
-void TestChatTemplate(const std::string& template_str, const std::string& messages_json, const std::string& tools_json) {
-    if (!isValidJson(messages_json) || !isValidJson(tools_json)) return; // Skip invalid JSON inputs
+void TestRenderJsonDoesNotCrash(const std::string & x)   {
+    EXPECT_EQ(dump(json::parse(x)), render("{{ x | tojson }}", {{"x", json::parse(x)}}, {}));
+}
 
+void TestChatTemplate(const std::string& template_str, const std::string& messages_json, const std::string& tools_json) {
     try {
         minja::chat_template tmpl(template_str, "<|start|>", "<|end|>");
-        auto messages = nlohmann::json::parse(messages_json);
-        auto tools = nlohmann::json::parse(tools_json);
-        auto result = tmpl.apply(messages, tools, true, {});
-
-        // Basic sanity checks
-        ASSERT_FALSE(result.empty());
-        ASSERT_TRUE(result.find("<|start|>") != std::string::npos);
-        ASSERT_TRUE(result.find("<|end|>") != std::string::npos);
+        auto messages = json::parse(messages_json);
+        auto tools = json::parse(tools_json);
+        auto unused = tmpl.apply(messages, tools, true, {});
     } catch (const std::exception& e) {
-        // It's okay if parsing fails for some inputs, but we don't want crashes
         std::cerr << "Exception caught: " << e.what() << std::endl;
     }
 }
 
-// Define the fuzz tests
-FUZZ_TEST(TestRawJinjaTemplating);
-FUZZ_TEST(TestChatTemplate);
-
-// Optional: Add domain constraints to generate more meaningful inputs
-FUZZ_TEST(TestRawJinjaTemplating)
+FUZZ_TEST(JinjaFuzzTest, TestRenderDoesNotCrash)
+    // .WithSeeds({
+    //     {"{% for x in range(10) | odd %}{% if x % 3 == 0 %}{{ x * 100 }}{% endif %}{% endfor %}", {"x", nullptr}},
+    //     {"{{ x.y[z]() - 1 }}", {}},
+    //     {"{% if 1 %}{# booh #}{% endif %}", {}},
+    //     {"{{ }}", {}},
+    //     {"{% %}", {}},
+    // })
     .WithDomains(
         fuzztest::Arbitrary<std::string>().WithMaxSize(1000),
-        fuzztest::Arbitrary<std::string>().WithMaxSize(1000)
+        fuzztest::InJsonGrammar()
     );
+FUZZ_TEST(JinjaFuzzTest, TestRenderJsonDoesNotCrash)
+    // .WithSeeds({
+    //     {"null"},
+    //     {"[]"},
+    //     {"[null]"},
+    //     {"[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]"},
+    //     {"{\"a\": [null]}"},
+    // })
+    .WithDomains(fuzztest::InJsonGrammar());
 
-FUZZ_TEST(TestChatTemplate)
+FUZZ_TEST(JinjaFuzzTest, TestChatTemplate)
     .WithDomains(
         fuzztest::Arbitrary<std::string>().WithMaxSize(1000),
-        fuzztest::Arbitrary<std::string>().WithMaxSize(1000),
-        fuzztest::Arbitrary<std::string>().WithMaxSize(1000)
+        fuzztest::InJsonGrammar(),
+        fuzztest::InJsonGrammar()
     );
