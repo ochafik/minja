@@ -6,6 +6,9 @@ Minja is a minimalistic reimplementation of the [Jinja](https://github.com/palle
 
 It is **not general purpose**: it includes just what’s needed for actual chat templates (very limited set of filters, tests and language features). Users with different needs should look at third-party alternatives such as [Jinja2Cpp](https://github.com/jinja2cpp/Jinja2Cpp), [Jinja2CppLight](https://github.com/hughperkins/Jinja2CppLight), or [inja](https://github.com/pantor/inja) (none of which we endorse).
 
+> [!WARNING]  
+> TL;DR: use of Minja is *at your own risk*, and the risks are plenty! See [Security & Privacy](#security--privacy) section below.
+
 ## Design goals:
 
 - Support each and every major LLM found on HuggingFace
@@ -207,9 +210,13 @@ Main limitations (non-exhaustive list):
 
 ## Security & Privacy
 
-### No funny data stuff
+### Data protection
 
 This library doesn't store any data by itself, it doesn't access files or the web, it only transforms a template (string) and context (JSON w/ fields `"messages"`, `"tools"`...) into a formatted string.
+
+You should still be careful about untrusted third-party chat templates, as these could try and trigger bugs in Minja to exfiltrate user chat data (we only have limited fuzzing tests in place).
+
+Risks are even higher with any user-defined functions.
 
 ### Do NOT produce HTML or JavaScript with this!
 
