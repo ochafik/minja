@@ -19,6 +19,7 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 ## Non-goals:
 
+- Address glaring Prompt injection risks in current Jinja chat templating practices. See [Security & Privacy](#security--privacy) below
 - Additional features from Jinja that aren't used by the template(s) of any major LLM (no feature creep!)
     - Please don't submit PRs with such features, they will unfortunately be rejected.
 - Full Jinja compliance (neither syntax-wise, nor filters / tests / globals)
@@ -204,6 +205,22 @@ Main limitations (non-exhaustive list):
     editorconfig-checker
     ```
 
-## Privacy Info
+## Security & Privacy
 
-This library doesn't store anything by itself, it doesn't access files or the web, it only transforms a template (string) and context (json) into a formatted string.
+### No funny data stuff
+
+This library doesn't store any data by itself, it doesn't access files or the web, it only transforms a template (string) and context (JSON w/ fields `"messages"`, `"tools"`...) into a formatted string.
+
+### Do NOT produce HTML or JavaScript with this!
+
+HTML processing with this library is UNSAFE: no escaping of is performed (and the `safe` filter is a passthrough), leaving users vulnerable to XSS. Minja is not intended to produce HTML.
+
+### Beware of Prompt injection risks!
+
+Prompt injection is NOT protected against by this library.
+
+It is perfectly possible for a user to craft a message that will look like a system prompt, like an assistant response or like the results of tool calls. While some models might be fine-tuned to ignore system calls not at the very start of the prompt or out of order messages / tool call results, it is expected that most models will be very confused & successfully manipulated by such prompt injections.
+
+Note that injection of tool calls should typically not result in their execution as LLM inference engines should not try to parse the template output (just generated tokens), but this is something to watch out for when auditing such inference engines.
+
+As there isn't any standard mechanism to escape special tokens to prevent those attacks, it is advised users of this library take their own message sanitization measures before applying chat templates. We do not recommend any specific such measure as each model reacts differently (some even understand l33tcode as instructions).
