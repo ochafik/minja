@@ -226,7 +226,9 @@ HTML processing with this library is UNSAFE: no escaping of is performed (and th
 
 Prompt injection is NOT protected against by this library.
 
-It is perfectly possible for a user to craft a message that will look like a system prompt, like an assistant response or like the results of tool calls. While some models might be fine-tuned to ignore system calls not at the very start of the prompt or out of order messages / tool call results, it is expected that most models will be very confused & successfully manipulated by such prompt injections.
+There are many types of prompt injection, some quite exotic (cf. [data exfiltration exploits leveraging markdown image previews](https://promptarmor.substack.com/p/data-exfiltration-from-writercom)).
+
+For the simpler cases, it is perfectly possible for a user to craft a message that will look like a system prompt, like an assistant response or like the results of tool calls. While some models might be fine-tuned to ignore system calls not at the very start of the prompt or out of order messages / tool call results, it is expected that most models will be very confused & successfully manipulated by such prompt injections.
 
 Note that injection of tool calls should typically not result in their execution as LLM inference engines should not try to parse the template output (just generated tokens), but this is something to watch out for when auditing such inference engines.
 
