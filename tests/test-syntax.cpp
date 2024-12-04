@@ -59,6 +59,9 @@ TEST(SyntaxTest, SimpleCases) {
         "[1, 2]",
         render(R"({{ [0, 1, 2, 3][1:-1] }})", {}, {}));
     EXPECT_EQ(
+        "9",
+        render(R"({{ "123456789" | length }})", {}, {}));
+    EXPECT_EQ(
         "        end",
         render(R"(    {%- if True %}{%- endif %}{{ '        ' }}{%- for x in [] %}foo{% endfor %}end)", {}, {}));
     EXPECT_EQ(
