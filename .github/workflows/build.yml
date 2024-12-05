@@ -10,12 +10,13 @@ on:
     paths: ['.github/workflows/build.yml', '**/CMakeLists.txt', '**/*.hpp', '**/*.cpp']
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-${{ matrix.os }}-${{ matrix.type }}
   cancel-in-progress: true
 
 jobs:
   build_and_test:
     strategy:
+      fail-fast: false
       matrix:
         os: [
           # macos-13,
