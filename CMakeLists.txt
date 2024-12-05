@@ -68,7 +68,6 @@ execute_process(
     COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}"
     COMMAND_ERROR_IS_FATAL ANY)
 execute_process(
-    COMMAND ${VENV_PYTHON} -m pip install --upgrade pip
     COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
     COMMAND_ERROR_IS_FATAL ANY)
 set(Python_EXECUTABLE "${VENV_PYTHON}" CACHE FILEPATH "Path to Python executable in venv" FORCE)
