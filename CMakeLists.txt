@@ -57,38 +57,22 @@ if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Create a python venv w/ the required dependencies
-find_package(Python COMPONENTS Interpreter REQUIRED)
-function(setup_python_environment)
-    set(VENV_DIR "${CMAKE_BINARY_DIR}/venv")
-
-    if(WIN32)
-        set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
-    else()
-        set(VENV_PYTHON "${VENV_DIR}/bin/python")
-    endif()
-
-    # Create a virtual environment if it doesnt exist yet
-    if(NOT EXISTS ${VENV_DIR})
-        execute_process(
-            COMMAND ${Python_EXECUTABLE} -m venv ${VENV_DIR} --upgrade-deps
-            RESULT_VARIABLE VENV_RESULT
-        )
-        if(NOT VENV_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to create virtual environment")
-        endif()
-
-        execute_process(
-            COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
-            RESULT_VARIABLE PIP_RESULT
-        )
-        if(NOT PIP_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to install Python dependencies")
-        endif()
-    endif()
-
-    set(Python_EXECUTABLE ${VENV_PYTHON} PARENT_SCOPE)
-endfunction()
-setup_python_environment()
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set(VENV_DIR "${CMAKE_BINARY_DIR}/venv")
+if(WIN32)
+    set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
+else()
+    set(VENV_PYTHON "${VENV_DIR}/bin/python")
+endif()
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}"
+    COMMAND_ERROR_IS_FATAL ANY)
+execute_process(
+    COMMAND ${VENV_PYTHON} -m pip install --upgrade pip
+    COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
+    COMMAND_ERROR_IS_FATAL ANY)
+set(Python_EXECUTABLE "${VENV_PYTHON}" CACHE FILEPATH "Path to Python executable in venv" FORCE)
+message(STATUS "Python executable: ${Python_EXECUTABLE}")
 
 find_program(CPPCHECK cppcheck)
 if(CPPCHECK)
