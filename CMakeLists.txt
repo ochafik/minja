@@ -68,26 +68,22 @@ function(setup_python_environment)
     endif()
 
     # Create a virtual environment if it doesnt exist yet
-    if(EXISTS ${VENV_DIR})
-        set(Python_EXECUTABLE ${VENV_PYTHON} PARENT_SCOPE)
-        return()
-    endif()
+    if(NOT EXISTS ${VENV_DIR})
+        execute_process(
+            COMMAND ${Python_EXECUTABLE} -m venv ${VENV_DIR} --upgrade-deps
+            RESULT_VARIABLE VENV_RESULT
+        )
+        if(NOT VENV_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to create virtual environment")
+        endif()
 
-    execute_process(
-        COMMAND ${Python_EXECUTABLE} -m venv ${VENV_DIR} --upgrade-deps
-        RESULT_VARIABLE VENV_RESULT
-    )
-    if(NOT VENV_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to create virtual environment")
-    endif()
-
-
-    execute_process(
-        COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
-        RESULT_VARIABLE PIP_RESULT
-    )
-    if(NOT PIP_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to install Python dependencies")
+        execute_process(
+            COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
+            RESULT_VARIABLE PIP_RESULT
+        )
+        if(NOT PIP_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to install Python dependencies")
+        endif()
     endif()
 
     set(Python_EXECUTABLE ${VENV_PYTHON} PARENT_SCOPE)
