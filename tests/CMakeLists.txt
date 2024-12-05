@@ -58,6 +58,8 @@ set(MODEL_IDS
     #   "google/gemma-2-2b-it"
     #   "mistralai/Mistral-7B-Instruct-v0.2"
     #   "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    #   "mistralai/Mistral-Large-Instruct-2407"
+    #   "mistralai/Mistral-Large-Instruct-2411"
     #   "mistralai/Mistral-Nemo-Instruct-2407",
     #   "CohereForAI/c4ai-command-r-plus"
 )
