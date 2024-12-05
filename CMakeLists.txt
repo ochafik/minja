@@ -7,6 +7,8 @@
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.14)
 
+cmake_policy(SET CMP0135 NEW) # https://cmake.org/cmake/help/latest/policy/CMP0135.html
+
 project(minja VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
