@@ -52,7 +52,8 @@ jobs:
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ matrix.type }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build ${{github.workspace}}/build --config Release
+        run: cmake --build ${{github.workspace}}/build --config Release --parallel
 
       - name: Test
-        run: ctest --test-dir build/tests --verbose
+        working-directory: ${{github.workspace}}/build
+        run: ctest --test-dir tests --output-on-failure --verbose
