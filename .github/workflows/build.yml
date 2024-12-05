@@ -17,7 +17,17 @@ jobs:
   build_and_test:
     strategy:
       matrix:
-        os: [macos-12, macos-13, macos-14, macos-latest, ubuntu-22.04, ubuntu-latest, windows-2019, windows-latest]
+        os: [
+          macos-12,
+          macos-13,
+          macos-14,
+          macos-latest,
+          ubuntu-22.04,
+          ubuntu-latest,
+          windows-2019,
+          windows-latest,
+        ]
+        type: [Release, Debug]
     runs-on:  ${{ matrix.os }}
     timeout-minutes: 30
 
@@ -27,11 +37,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2.11
+        with:
+          key: ${{ matrix.os }}-${{ matrix.type }}
+
       - name: Set up CMake
         uses: lukka/get-cmake@latest
 
       - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ matrix.type }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config Release --parallel
