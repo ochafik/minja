@@ -81,11 +81,6 @@ function(setup_python_environment)
         message(FATAL_ERROR "Failed to create virtual environment")
     endif()
 
-    if(WIN32)
-        set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
-    else()
-        set(VENV_PYTHON "${VENV_DIR}/bin/python")
-    endif()
 
     execute_process(
         COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
