@@ -50,17 +50,23 @@ set(MODEL_IDS
     "Qwen/Qwen2.5-Math-7B-Instruct"
     "teknium/OpenHermes-2.5-Mistral-7B"
     "TheBloke/FusionNet_34Bx2_MoE-AWQ"
-
-    # Gated models: you will need to run `huggingface-cli login` (and be granted access) to download these
-    #   "meta-llama/Llama-3.2-3B-Instruct"
-    #   "meta-llama/Meta-Llama-3.1-8B-Instruct"
-    #   "google/gemma-7b-it"
-    #   "google/gemma-2-2b-it"
-    #   "mistralai/Mistral-7B-Instruct-v0.2"
-    #   "mistralai/Mixtral-8x7B-Instruct-v0.1"
-    #   "mistralai/Mistral-Nemo-Instruct-2407",
-    #   "CohereForAI/c4ai-command-r-plus"
 )
+
+# Gated models: you will need to run `huggingface-cli login` (and be granted access) to download these
+if (MINJA_TEST_GATED_MODELS)
+    list(APPEND MODEL_IDS
+        "meta-llama/Llama-3.2-3B-Instruct"
+        "meta-llama/Meta-Llama-3.1-8B-Instruct"
+        "google/gemma-7b-it"
+        "google/gemma-2-2b-it"
+        "mistralai/Mistral-7B-Instruct-v0.2"
+        "mistralai/Mixtral-8x7B-Instruct-v0.1"
+        "mistralai/Mistral-Large-Instruct-2407"
+        "mistralai/Mistral-Large-Instruct-2411"
+        "mistralai/Mistral-Nemo-Instruct-2407"
+        "CohereForAI/c4ai-command-r-plus"
+    )
+endif()
 
 # Create one test case for each {template, context} combination
 file(GLOB CONTEXT_FILES "${CMAKE_SOURCE_DIR}/tests/contexts/*.json")
@@ -81,13 +87,15 @@ foreach(test_case ${CHAT_TEMPLATE_TEST_CASES})
     add_test(NAME ${test_name} COMMAND $<TARGET_FILE:test-chat-template> ${test_args})
 endforeach()
 
-if (FUZZTEST_FUZZING_MODE)
-    message(STATUS "Fuzzing mode enabled")
-    fuzztest_setup_fuzzing_flags()
+if (MINJA_FUZZTEST_ENABLED)
+    if (MINJA_FUZZTEST_FUZZING_MODE)
+        message(STATUS "Fuzzing mode enabled")
+        fuzztest_setup_fuzzing_flags()
+    endif()
+    add_executable(test-fuzz test-fuzz.cpp)
+    set_target_properties(test-fuzz PROPERTIES CXX_STANDARD 17)
+    target_include_directories(test-fuzz PRIVATE ${fuzztest_BINARY_DIR})
+    target_link_libraries(test-fuzz PRIVATE nlohmann_json::nlohmann_json)
+    link_fuzztest(test-fuzz)
+    gtest_discover_tests(test-fuzz)
 endif()
-add_executable(test-fuzz test-fuzz.cpp)
-set_target_properties(test-fuzz PROPERTIES CXX_STANDARD 17)
-target_include_directories(test-fuzz PRIVATE ${fuzztest_BINARY_DIR})
-target_link_libraries(test-fuzz PRIVATE nlohmann_json::nlohmann_json)
-link_fuzztest(test-fuzz)
-gtest_discover_tests(test-fuzz)

@@ -199,7 +199,7 @@ Main limitations (non-exhaustive list):
     - Which version of GCC / clang did you compile the tests with? On which OS version?
     - If you intend to contribute a fix:
         - Please read [CONTRIBUTING](./CONTRIBUTING.md) first. You'd have to sign a CLA, which your employer may need to accept.
-        - Please test as many gated models as possible
+        - Please test as many gated models as possible (use `cmake -B build -DMINJA_TEST_GATED_MODELS=1 ...` and edit `MODEL_IDS` in [tests/CMakeLists.txt](./tests/CMakeLists.txt) appropriately if you don't have access to some models)
 
 - For bonus points, check the style of your edits with:
 

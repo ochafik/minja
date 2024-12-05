@@ -7,9 +7,20 @@
 # SPDX-License-Identifier: MIT
 cmake_minimum_required(VERSION 3.14)
 
+cmake_policy(SET CMP0135 NEW) # https://cmake.org/cmake/help/latest/policy/CMP0135.html
+
 project(minja VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+option(MINJA_TEST_GATED_MODELS    "minja: test gated models"    OFF)
+if (MSVC)
+    set(MINJA_FUZZTEST_ENABLED_DEFAULT OFF)
+else()
+    set(MINJA_FUZZTEST_ENABLED_DEFAULT ON)
+endif()
+option(MINJA_FUZZTEST_ENABLED       "minja: fuzztests enabled"  MINJA_FUZZTEST_ENABLED_DEFAULT)
+option(MINJA_FUZZTEST_FUZZING_MODE  "minja: run fuzztests (if enabled) in fuzzing mode"     OFF)
 
 # Note: tests require C++14 because google/fuzztest depends on a version of gtest that requires it
 # (and we don't want to use an older version of fuzztest)
@@ -22,9 +33,15 @@ include(FetchContent)
 FetchContent_Declare(json URL https://github.com/nlohmann/json/archive/refs/heads/develop.zip)
 FetchContent_MakeAvailable(json)
 
-# Fetch google/fuzztest (and indirectly, gtest)
-FetchContent_Declare(fuzztest URL https://github.com/google/fuzztest/archive/refs/heads/main.zip)
-FetchContent_MakeAvailable(fuzztest)
+if (MINJA_FUZZTEST_ENABLED)
+    # Fetch google/fuzztest (and indirectly, gtest)
+    FetchContent_Declare(fuzztest URL https://github.com/google/fuzztest/archive/refs/heads/main.zip)
+    FetchContent_MakeAvailable(fuzztest)
+else()
+    # Fetch gtest
+    FetchContent_Declare(googletest URL https://github.com/google/googletest/archive/refs/heads/main.zip)
+    FetchContent_MakeAvailable(googletest)
+endif()
 
 # Use ccache if installed
 find_program(CCACHE_PATH ccache)
@@ -40,41 +57,21 @@ if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Create a python venv w/ the required dependencies
-find_package(Python COMPONENTS Interpreter REQUIRED)
-function(setup_python_environment)
-    set(VENV_DIR "${CMAKE_BINARY_DIR}/venv")
-
-    # Create a virtual environment if it doesnt exist yet
-    if(EXISTS ${VENV_DIR})
-        set(Python_EXECUTABLE ${VENV_DIR}/bin/python PARENT_SCOPE)
-        return()
-    endif()
-
-    execute_process(
-        COMMAND ${Python_EXECUTABLE} -m venv ${VENV_DIR}
-        RESULT_VARIABLE VENV_RESULT
-    )
-    if(NOT VENV_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to create virtual environment")
-    endif()
-
-    if(WIN32)
-        set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
-    else()
-        set(VENV_PYTHON "${VENV_DIR}/bin/python")
-    endif()
-
-    execute_process(
-        COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
-        RESULT_VARIABLE PIP_RESULT
-    )
-    if(NOT PIP_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to install Python dependencies")
-    endif()
-
-    set(Python_EXECUTABLE ${VENV_PYTHON} PARENT_SCOPE)
-endfunction()
-setup_python_environment()
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set(VENV_DIR "${CMAKE_BINARY_DIR}/venv")
+if(WIN32)
+    set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
+else()
+    set(VENV_PYTHON "${VENV_DIR}/bin/python")
+endif()
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}"
+    COMMAND_ERROR_IS_FATAL ANY)
+execute_process(
+    COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
+    COMMAND_ERROR_IS_FATAL ANY)
+set(Python_EXECUTABLE "${VENV_PYTHON}" CACHE FILEPATH "Path to Python executable in venv" FORCE)
+message(STATUS "Python executable: ${Python_EXECUTABLE}")
 
 find_program(CPPCHECK cppcheck)
 if(CPPCHECK)
@@ -92,4 +89,5 @@ include_directories(
 add_subdirectory(examples)
 
 enable_testing()
+include(GoogleTest)
 add_subdirectory(tests)
