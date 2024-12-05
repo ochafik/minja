@@ -59,14 +59,20 @@ find_package(Python COMPONENTS Interpreter REQUIRED)
 function(setup_python_environment)
     set(VENV_DIR "${CMAKE_BINARY_DIR}/venv")
 
+    if(WIN32)
+        set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
+    else()
+        set(VENV_PYTHON "${VENV_DIR}/bin/python")
+    endif()
+
     # Create a virtual environment if it doesnt exist yet
     if(EXISTS ${VENV_DIR})
-        set(Python_EXECUTABLE ${VENV_DIR}/bin/python PARENT_SCOPE)
+        set(Python_EXECUTABLE ${VENV_PYTHON} PARENT_SCOPE)
         return()
     endif()
 
     execute_process(
-        COMMAND ${Python_EXECUTABLE} -m venv ${VENV_DIR}
+        COMMAND ${Python_EXECUTABLE} -m venv ${VENV_DIR} --upgrade-deps
         RESULT_VARIABLE VENV_RESULT
     )
     if(NOT VENV_RESULT EQUAL 0)
