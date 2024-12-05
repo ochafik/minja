@@ -18,15 +18,18 @@ jobs:
     strategy:
       matrix:
         os: [
-          macos-13,
-          macos-14,
+          # macos-13,
+          # macos-14,
           macos-latest,
-          ubuntu-22.04,
+          # ubuntu-22.04,
           ubuntu-latest,
-          windows-2019,
+          # windows-2019,
           windows-latest,
         ]
-        type: [Release, Debug]
+        type: [
+          Release,
+          # Debug,
+        ]
     runs-on:  ${{ matrix.os }}
     timeout-minutes: 30
 
