@@ -11,6 +11,14 @@ project(minja VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if (MSVC)
+    set(MINJA_FUZZTEST_ENABLED_DEFAULT OFF)
+else()
+    set(MINJA_FUZZTEST_ENABLED_DEFAULT ON)
+endif()
+option(MINJA_FUZZTEST_ENABLED       "minja: fuzztests enabled"  MINJA_FUZZTEST_ENABLED_DEFAULT)
+option(MINJA_FUZZTEST_FUZZING_MODE  "minja: run fuzztests (if enabled) in fuzzing mode"     OFF)
+
 # Note: tests require C++14 because google/fuzztest depends on a version of gtest that requires it
 # (and we don't want to use an older version of fuzztest)
 # Examples are built w/ C++11 to check the compatibility of the library.
@@ -22,9 +30,15 @@ include(FetchContent)
 FetchContent_Declare(json URL https://github.com/nlohmann/json/archive/refs/heads/develop.zip)
 FetchContent_MakeAvailable(json)
 
-# Fetch google/fuzztest (and indirectly, gtest)
-FetchContent_Declare(fuzztest URL https://github.com/google/fuzztest/archive/refs/heads/main.zip)
-FetchContent_MakeAvailable(fuzztest)
+if (MINJA_FUZZTEST_ENABLED)
+    # Fetch google/fuzztest (and indirectly, gtest)
+    FetchContent_Declare(fuzztest URL https://github.com/google/fuzztest/archive/refs/heads/main.zip)
+    FetchContent_MakeAvailable(fuzztest)
+else()
+    # Fetch gtest
+    FetchContent_Declare(googletest URL https://github.com/google/googletest/archive/refs/heads/main.zip)
+    FetchContent_MakeAvailable(googletest)
+endif()
 
 # Use ccache if installed
 find_program(CCACHE_PATH ccache)
@@ -92,4 +106,5 @@ include_directories(
 add_subdirectory(examples)
 
 enable_testing()
+include(GoogleTest)
 add_subdirectory(tests)
