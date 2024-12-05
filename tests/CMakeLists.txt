@@ -50,19 +50,23 @@ set(MODEL_IDS
     "Qwen/Qwen2.5-Math-7B-Instruct"
     "teknium/OpenHermes-2.5-Mistral-7B"
     "TheBloke/FusionNet_34Bx2_MoE-AWQ"
-
-    # Gated models: you will need to run `huggingface-cli login` (and be granted access) to download these
-    #   "meta-llama/Llama-3.2-3B-Instruct"
-    #   "meta-llama/Meta-Llama-3.1-8B-Instruct"
-    #   "google/gemma-7b-it"
-    #   "google/gemma-2-2b-it"
-    #   "mistralai/Mistral-7B-Instruct-v0.2"
-    #   "mistralai/Mixtral-8x7B-Instruct-v0.1"
-    #   "mistralai/Mistral-Large-Instruct-2407"
-    #   "mistralai/Mistral-Large-Instruct-2411"
-    #   "mistralai/Mistral-Nemo-Instruct-2407",
-    #   "CohereForAI/c4ai-command-r-plus"
 )
+
+# Gated models: you will need to run `huggingface-cli login` (and be granted access) to download these
+if (MINJA_TEST_GATED_MODELS)
+    list(APPEND MODEL_IDS
+        "meta-llama/Llama-3.2-3B-Instruct"
+        "meta-llama/Meta-Llama-3.1-8B-Instruct"
+        "google/gemma-7b-it"
+        "google/gemma-2-2b-it"
+        "mistralai/Mistral-7B-Instruct-v0.2"
+        "mistralai/Mixtral-8x7B-Instruct-v0.1"
+        "mistralai/Mistral-Large-Instruct-2407"
+        "mistralai/Mistral-Large-Instruct-2411"
+        "mistralai/Mistral-Nemo-Instruct-2407"
+        "CohereForAI/c4ai-command-r-plus"
+    )
+endif()
 
 # Create one test case for each {template, context} combination
 file(GLOB CONTEXT_FILES "${CMAKE_SOURCE_DIR}/tests/contexts/*.json")
