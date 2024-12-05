@@ -13,6 +13,6 @@
 #
 set -euo pipefail
 
-cmake -B build && \
+cmake -B build "$@" && \
     cmake --build build -j && \
     ctest --test-dir build -j --output-on-failure
