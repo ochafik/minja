@@ -49,11 +49,16 @@ def strftime_now(format):
     return now.strftime(format)
 
 
+def join_cmake_path(parent, child):
+    '''
+        On Windows, CMake will interpret any backslashes as escapes so we return / for path separators
+    '''
+    return '/'.join(x.replace(r'\\', '/') for x in (parent, child))
+
 def handle_chat_template(output_folder, model_id, variant, template_src, context_files):
     model_name = model_id.replace("/", "-")
     base_name = f'{model_name}-{variant}' if variant else model_name
-    # On Windows, CMake will interpret any backslashes as escapes so we return / for path separators
-    template_file = output_folder.replace(r'\\', '/') + '/' + f'{base_name}.jinja'
+    template_file = join_cmake_path(output_folder, f'{base_name}.jinja')
 
     with open(template_file, 'w') as f:
         f.write(template_src)
@@ -88,7 +93,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
         if template_hates_the_system and any(m['role'] == 'system' for m in context['messages']):
             continue
 
-        output_file = os.path.join(output_folder, f'{base_name}-{context_name}.txt')
+        output_file = join_cmake_path(output_folder, f'{base_name}-{context_name}.txt')
 
         render_context = json.loads(json.dumps(context))
 
