@@ -15,13 +15,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (MSVC)
     set(MINJA_FUZZTEST_ENABLED_DEFAULT OFF)
+    set(MINJA_USE_VENV_DEFAULT OFF)
 else()
     set(MINJA_FUZZTEST_ENABLED_DEFAULT ON)
+    set(MINJA_USE_VENV_DEFAULT ON)
 endif()
-option(MINJA_TEST_GATED_MODELS      "minja: test gated models"                              OFF)
 option(MINJA_FUZZTEST_ENABLED       "minja: fuzztests enabled"                              MINJA_FUZZTEST_ENABLED_DEFAULT)
 option(MINJA_FUZZTEST_FUZZING_MODE  "minja: run fuzztests (if enabled) in fuzzing mode"     OFF)
-option(MINJA_USE_VENV               "minja: use Python venv for build"                      ON)
+option(MINJA_USE_VENV               "minja: use Python venv for build"                      MINJA_USE_VENV_DEFAULT)
 
 # Note: tests require C++14 because google/fuzztest depends on a version of gtest that requires it
 # (and we don't want to use an older version of fuzztest)
