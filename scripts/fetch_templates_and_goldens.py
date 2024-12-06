@@ -53,7 +53,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
     model_name = model_id.replace("/", "-")
     base_name = f'{model_name}-{variant}' if variant else model_name
     # On Windows, CMake will interpret any backslashes as escapes so we return / for path separators
-    template_file = os.path.join(output_folder, f'{base_name}.jinja').replace(r'\\', r'/')
+    template_file = output_folder.replace(r'\\', '/') + '/' + f'{base_name}.jinja'
 
     with open(template_file, 'w') as f:
         f.write(template_src)
