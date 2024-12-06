@@ -53,6 +53,9 @@ TEST(SyntaxTest, SimpleCases) {
         "[1, 2, 3]",
         render("{{ [1] + [2, 3] }}", {}, {}));
     EXPECT_EQ(
+        "abc",
+        render("{{ 'AbC' | lower }}", {}, {}));
+    EXPECT_EQ(
         "the default1",
         render("{{ foo | default('the default') }}{{ 1 | default('nope') }}", {}, {}));
     EXPECT_EQ(

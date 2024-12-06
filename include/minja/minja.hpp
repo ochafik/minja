@@ -2401,6 +2401,14 @@ inline std::shared_ptr<Context> Context::builtins() {
     auto & text = args.at("text");
     return text.is_null() ? text : Value(strip(text.get<std::string>()));
   }));
+  globals.set("lower", simple_function("lower", { "text" }, [](const std::shared_ptr<Context> &, Value & args) {
+    auto text = args.at("text");
+    if (text.is_null()) return text;
+    std::string res;
+    auto str = text.get<std::string>();
+    std::transform(str.begin(), str.end(), std::back_inserter(res), ::tolower);
+    return Value(res);
+  }));
   globals.set("default", Value::callable([=](const std::shared_ptr<Context> &, Value::Arguments & args) {
     args.expectArgs("default", {2, 3}, {0, 1});
     auto & value = args.args[0];
