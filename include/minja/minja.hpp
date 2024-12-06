@@ -2401,6 +2401,21 @@ inline std::shared_ptr<Context> Context::builtins() {
     auto & text = args.at("text");
     return text.is_null() ? text : Value(strip(text.get<std::string>()));
   }));
+  globals.set("default", Value::callable([=](const std::shared_ptr<Context> &, Value::Arguments & args) {
+    args.expectArgs("default", {2, 3}, {0, 1});
+    auto & value = args.args[0];
+    auto & default_value = args.args[1];
+    bool boolean = false;
+    if (args.args.size() == 3) {
+      boolean = args.args[2].get<bool>();
+    } else {
+      Value bv = args.get_named("boolean");
+      if (!bv.is_null()) {
+        boolean = bv.get<bool>();
+      }
+    }
+    return boolean ? (value.to_bool() ? value : default_value) : value.is_null() ? default_value : value;
+  }));
   auto escape = simple_function("escape", { "text" }, [](const std::shared_ptr<Context> &, Value & args) {
     return Value(html_escape(args.at("text").get<std::string>()));
   });

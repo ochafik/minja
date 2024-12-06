@@ -53,6 +53,12 @@ TEST(SyntaxTest, SimpleCases) {
         "[1, 2, 3]",
         render("{{ [1] + [2, 3] }}", {}, {}));
     EXPECT_EQ(
+        "the default1",
+        render("{{ foo | default('the default') }}{{ 1 | default('nope') }}", {}, {}));
+    EXPECT_EQ(
+        "the default1",
+        render("{{ '' | default('the default', true) }}{{ 1 | default('nope', true) }}", {}, {}));
+    EXPECT_EQ(
         "a\n  b\n|  a\n  b\n",
         render("{% set txt = 'a\\nb\\n' %}{{ txt | indent(2) }}|{{ txt | indent(2, first=true) }}", {}, {}));
     EXPECT_EQ(
