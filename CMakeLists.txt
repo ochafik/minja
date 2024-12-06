@@ -77,7 +77,7 @@ if(MINJA_USE_VENV)
         set(VENV_PYTHON "${VENV_DIR}/bin/python")
     endif()
     execute_process(
-        COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}"
+        COMMAND ${Python_EXECUTABLE} -m venv "${VENV_DIR}"
         COMMAND_ERROR_IS_FATAL ANY)
     execute_process(
         COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
