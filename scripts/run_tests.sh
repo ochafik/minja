@@ -13,6 +13,6 @@
 #
 set -euo pipefail
 
-cmake -B build "$@" && \
-    cmake --build build -j && \
-    ctest --test-dir build -j --output-on-failure
+cmake -B build "$@" -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build -j --config Release && \
+    ctest --test-dir build -j -C Release --output-on-failure
