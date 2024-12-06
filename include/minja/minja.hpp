@@ -20,12 +20,6 @@
 
 using json = nlohmann::ordered_json;
 
-/* Backport make_unique from C++14. */
-template <class T, class... Args>
-typename std::unique_ptr<T> nonstd_make_unique(Args &&...args) {
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
-
 namespace minja {
 
 class Context;
@@ -51,8 +45,8 @@ public:
     }
 
     Value get_named(const std::string & name) {
-      for (const auto & p : kwargs) {
-        if (p.first == name) return p.second;
+      for (const auto & [key, value] : kwargs) {
+        if (key == name) return value;
       }
       return Value();
     }
@@ -483,13 +477,11 @@ inline json Value::get<json>() const {
   }
   if (object_) {
     json res = json::object();
-    for (const auto& item : *object_) {
-      const auto & key = item.first;
-      auto json_value = item.second.get<json>();
+    for (const auto& [key, value] : *object_) {
       if (key.is_string()) {
-        res[key.get<std::string>()] = json_value;
+        res[key.get<std::string>()] = value.get<json>();
       } else if (key.is_primitive()) {
-        res[key.dump()] = json_value;
+        res[key.dump()] = value.get<json>();
       } else {
         throw std::runtime_error("Invalid key type for conversion to JSON: " + key.dump());
       }
@@ -604,8 +596,8 @@ public:
             for (const auto& arg : this->args) {
                 vargs.args.push_back(arg->evaluate(context));
             }
-            for (const auto& arg : this->kwargs) {
-                vargs.kwargs.push_back({arg.first, arg.second->evaluate(context)});
+            for (const auto& [name, value] : this->kwargs) {
+                vargs.kwargs.push_back({name, value->evaluate(context)});
             }
             return vargs;
         }
@@ -968,13 +960,11 @@ public:
                 auto & param_name = params[i].first;
                 call_context->set(param_name, arg);
             }
-            for (size_t i = 0, n = args.kwargs.size(); i < n; i++) {
-                auto & arg = args.kwargs[i];
-                auto & arg_name = arg.first;
+            for (auto & [arg_name, value] : args.kwargs) {
                 auto it = named_param_positions.find(arg_name);
                 if (it == named_param_positions.end()) throw std::runtime_error("Unknown parameter name for macro " + name->get_name() + ": " + arg_name);
 
-                call_context->set(arg_name, arg.second);
+                call_context->set(arg_name, value);
                 param_set[it->second] = true;
             }
             // Set default values for parameters that were not passed
@@ -1100,10 +1090,10 @@ public:
       : Expression(location), elements(std::move(e)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
         auto result = Value::object();
-        for (const auto& e : elements) {
-            if (!e.first) throw std::runtime_error("Dict key is null");
-            if (!e.second) throw std::runtime_error("Dict value is null");
-            result.set(e.first->evaluate(context), e.second->evaluate(context));
+        for (const auto& [key, value] : elements) {
+            if (!key) throw std::runtime_error("Dict key is null");
+            if (!value) throw std::runtime_error("Dict value is null");
+            result.set(key->evaluate(context), value->evaluate(context));
         }
         return result;
     }
@@ -1456,7 +1446,7 @@ private:
             escape = true;
           } else if (*it == quote) {
               ++it;
-            return nonstd_make_unique<std::string>(std::move(result));
+            return std::make_unique<std::string>(std::move(result));
           } else {
             result += *it;
           }
@@ -1603,8 +1593,8 @@ private:
         }
 
         auto location = get_location();
-        auto if_expr = parseIfExpression();
-        return std::make_shared<IfExpr>(location, std::move(if_expr.first), std::move(left), std::move(if_expr.second));
+        auto [condition, else_expr] = parseIfExpression();
+        return std::make_shared<IfExpr>(location, std::move(condition), std::move(left), std::move(else_expr));
     }
 
     Location get_location() const {
@@ -1621,7 +1611,7 @@ private:
           else_expr = parseExpression();
           if (!else_expr) throw std::runtime_error("Expected 'else' expression");
         }
-        return std::make_pair(std::move(condition), std::move(else_expr));
+        return std::pair(std::move(condition), std::move(else_expr));
     }
 
     std::shared_ptr<Expression> parseLogicalOr() {
@@ -2006,7 +1996,7 @@ private:
             if (consumeToken(":").empty()) throw std::runtime_error("Expected colon betweek key & value in dictionary");
             auto value = parseExpression();
             if (!value) throw std::runtime_error("Expected value in dictionary");
-            elements.emplace_back(std::make_pair(std::move(key), std::move(value)));
+            elements.emplace_back(std::pair(std::move(key), std::move(value)));
         };
 
         parseKeyValuePair();
@@ -2081,7 +2071,7 @@ private:
             auto pre_space = parsePreSpace(group[1]);
             auto content = group[2];
             auto post_space = parsePostSpace(group[3]);
-            tokens.push_back(nonstd_make_unique<CommentTemplateToken>(location, pre_space, post_space, content));
+            tokens.push_back(std::make_unique<CommentTemplateToken>(location, pre_space, post_space, content));
           } else if (!(group = consumeTokenGroups(expr_open_regex, SpaceHandling::Keep)).empty()) {
             auto pre_space = parsePreSpace(group[1]);
             auto expr = parseExpression();
@@ -2091,7 +2081,7 @@ private:
             }
 
             auto post_space = parsePostSpace(group[1]);
-            tokens.push_back(nonstd_make_unique<ExpressionTemplateToken>(location, pre_space, post_space, std::move(expr)));
+            tokens.push_back(std::make_unique<ExpressionTemplateToken>(location, pre_space, post_space, std::move(expr)));
           } else if (!(group = consumeTokenGroups(block_open_regex, SpaceHandling::Keep)).empty()) {
             auto pre_space = parsePreSpace(group[1]);
 
@@ -2109,19 +2099,19 @@ private:
               if (!condition) throw std::runtime_error("Expected condition in if block");
 
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<IfTemplateToken>(location, pre_space, post_space, std::move(condition)));
+              tokens.push_back(std::make_unique<IfTemplateToken>(location, pre_space, post_space, std::move(condition)));
             } else if (keyword == "elif") {
               auto condition = parseExpression();
               if (!condition) throw std::runtime_error("Expected condition in elif block");
 
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<ElifTemplateToken>(location, pre_space, post_space, std::move(condition)));
+              tokens.push_back(std::make_unique<ElifTemplateToken>(location, pre_space, post_space, std::move(condition)));
             } else if (keyword == "else") {
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<ElseTemplateToken>(location, pre_space, post_space));
+              tokens.push_back(std::make_unique<ElseTemplateToken>(location, pre_space, post_space));
             } else if (keyword == "endif") {
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<EndIfTemplateToken>(location, pre_space, post_space));
+              tokens.push_back(std::make_unique<EndIfTemplateToken>(location, pre_space, post_space));
             } else if (keyword == "for") {
               static std::regex recursive_tok(R"(recursive\b)");
               static std::regex if_tok(R"(if\b)");
@@ -2139,10 +2129,10 @@ private:
               auto recursive = !consumeToken(recursive_tok).empty();
 
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<ForTemplateToken>(location, pre_space, post_space, std::move(varnames), std::move(iterable), std::move(condition), recursive));
+              tokens.push_back(std::make_unique<ForTemplateToken>(location, pre_space, post_space, std::move(varnames), std::move(iterable), std::move(condition), recursive));
             } else if (keyword == "endfor") {
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<EndForTemplateToken>(location, pre_space, post_space));
+              tokens.push_back(std::make_unique<EndForTemplateToken>(location, pre_space, post_space));
             } else if (keyword == "set") {
               static std::regex namespaced_var_regex(R"((\w+)[\s\n\r]*\.[\s\n\r]*(\w+))");
 
@@ -2166,34 +2156,34 @@ private:
                 }
               }
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<SetTemplateToken>(location, pre_space, post_space, ns, var_names, std::move(value)));
+              tokens.push_back(std::make_unique<SetTemplateToken>(location, pre_space, post_space, ns, var_names, std::move(value)));
             } else if (keyword == "endset") {
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<EndSetTemplateToken>(location, pre_space, post_space));
+              tokens.push_back(std::make_unique<EndSetTemplateToken>(location, pre_space, post_space));
             } else if (keyword == "macro") {
               auto macroname = parseIdentifier();
               if (!macroname) throw std::runtime_error("Expected macro name in macro block");
               auto params = parseParameters();
 
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<MacroTemplateToken>(location, pre_space, post_space, std::move(macroname), std::move(params)));
+              tokens.push_back(std::make_unique<MacroTemplateToken>(location, pre_space, post_space, std::move(macroname), std::move(params)));
             } else if (keyword == "endmacro") {
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<EndMacroTemplateToken>(location, pre_space, post_space));
+              tokens.push_back(std::make_unique<EndMacroTemplateToken>(location, pre_space, post_space));
             } else if (keyword == "filter") {
               auto filter = parseExpression();
               if (!filter) throw std::runtime_error("Expected expression in filter block");
 
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<FilterTemplateToken>(location, pre_space, post_space, std::move(filter)));
+              tokens.push_back(std::make_unique<FilterTemplateToken>(location, pre_space, post_space, std::move(filter)));
             } else if (keyword == "endfilter") {
               auto post_space = parseBlockClose();
-              tokens.push_back(nonstd_make_unique<EndFilterTemplateToken>(location, pre_space, post_space));
+              tokens.push_back(std::make_unique<EndFilterTemplateToken>(location, pre_space, post_space));
             } else {
               throw std::runtime_error("Unexpected block: " + keyword);
             }
           } else if (!(text = consumeToken(text_regex, SpaceHandling::Keep)).empty()) {
-            tokens.push_back(nonstd_make_unique<TextTemplateToken>(location, SpaceHandling::Keep, SpaceHandling::Keep, text));
+            tokens.push_back(std::make_unique<TextTemplateToken>(location, SpaceHandling::Keep, SpaceHandling::Keep, text));
           } else {
             if (it != end) throw std::runtime_error("Unexpected character");
           }
@@ -2346,14 +2336,13 @@ static Value simple_function(const std::string & fn_name, const std::vector<std:
         throw std::runtime_error("Too many positional params for " + fn_name);
       }
     }
-    for (size_t i = 0, n = args.kwargs.size(); i < n; i++) {
-      auto & arg = args.kwargs[i];
-      auto named_pos_it = named_positions.find(arg.first);
+    for (auto & [name, value] : args.kwargs) {
+      auto named_pos_it = named_positions.find(name);
       if (named_pos_it == named_positions.end()) {
-        throw std::runtime_error("Unknown argument " + arg.first + " for function " + fn_name);
+        throw std::runtime_error("Unknown argument " + name + " for function " + fn_name);
       }
       provided_args[named_pos_it->second] = true;
-      args_obj.set(arg.first, arg.second);
+      args_obj.set(name, value);
     }
     return fn(context, args_obj);
   });
@@ -2452,8 +2441,8 @@ inline std::shared_ptr<Context> Context::builtins() {
   globals.set("namespace", Value::callable([=](const std::shared_ptr<Context> &, Value::Arguments & args) {
     auto ns = Value::object();
     args.expectArgs("namespace", {0, 0}, {0, std::numeric_limits<size_t>::max()});
-    for (auto & arg : args.kwargs) {
-      ns.set(arg.first, arg.second);
+    for (auto & [name, value] : args.kwargs) {
+      ns.set(name, value);
     }
     return ns;
   }));
@@ -2623,17 +2612,17 @@ inline std::shared_ptr<Context> Context::builtins() {
         param_set[i] = true;
         }
       }
-      for (auto & arg : args.kwargs) {
+      for (auto & [name, value] : args.kwargs) {
         size_t i;
-        if (arg.first == "start") i = 0;
-        else if (arg.first == "end") i = 1;
-        else if (arg.first == "step") i = 2;
-        else throw std::runtime_error("Unknown argument " + arg.first + " for function range");
+        if (name == "start") i = 0;
+        else if (name == "end") i = 1;
+        else if (name == "step") i = 2;
+        else throw std::runtime_error("Unknown argument " + name + " for function range");
 
         if (param_set[i]) {
-          throw std::runtime_error("Duplicate argument " + arg.first + " for function range");
+          throw std::runtime_error("Duplicate argument " + name + " for function range");
         }
-        startEndStep[i] = arg.second.get<int64_t>();
+        startEndStep[i] = value.get<int64_t>();
         param_set[i] = true;
     }
     if (!param_set[1]) {
