@@ -55,58 +55,58 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    std::string tmpl_file = argv[1];
-    std::string ctx_file = argv[2];
-    std::string golden_file = argv[3];
-    
-    auto tmpl_str = read_file(tmpl_file);
-    
-    if (ctx_file == "n/a")
-    {
-        std::cout << "# Skipping template: " << tmpl_file << "\n" << tmpl_str << std::endl;
-        return 127;
-    }
-
-    std::cout << "# Testing template: " << tmpl_file << std::endl
-              << "# With context: " << ctx_file << std::endl
-              << "# Against golden file: " << golden_file << std::endl
-              << std::flush;
-
-    auto ctx = json::parse(read_file(ctx_file));
-
-    minja::chat_template tmpl(
-        tmpl_str,
-        ctx.at("bos_token"),
-        ctx.at("eos_token"));
-
-    std::string expected;
     try {
-        expected = read_file(golden_file);
-    } catch (const std::runtime_error &e) {
-        std::cerr << "Failed to read golden file: " << golden_file << std::endl;
-        std::cerr << e.what() << std::endl;
-        return 1;
-    }
+        std::string tmpl_file = argv[1];
+        std::string ctx_file = argv[2];
+        std::string golden_file = argv[3];
+        
+        auto tmpl_str = read_file(tmpl_file);
+        
+        if (ctx_file == "n/a")
+        {
+            std::cout << "# Skipping template: " << tmpl_file << "\n" << tmpl_str << std::endl;
+            return 127;
+        }
 
-    std::string actual;
-    try {
-        actual = tmpl.apply(
-            ctx.at("messages"),
-            ctx.contains("tools") ? ctx.at("tools") : json(),
-            ctx.at("add_generation_prompt"),
-            ctx.contains("tools") ? json{
-                                        {"builtin_tools", {"wolfram_alpha", "brave_search"}}}
-                                  : json());
-    } catch (const std::runtime_error &e) {
-        std::cerr << "Error applying template: " << e.what() << std::endl;
-        return 1;
-    }
+        std::cout << "# Testing template: " << tmpl_file << std::endl
+                << "# With context: " << ctx_file << std::endl
+                << "# Against golden file: " << golden_file << std::endl
+                << std::flush;
 
-    try {
+        auto ctx = json::parse(read_file(ctx_file));
+
+        minja::chat_template tmpl(
+            tmpl_str,
+            ctx.at("bos_token"),
+            ctx.at("eos_token"));
+
+        std::string expected;
+        try {
+            expected = read_file(golden_file);
+        } catch (const std::exception &e) {
+            std::cerr << "Failed to read golden file: " << golden_file << std::endl;
+            std::cerr << e.what() << std::endl;
+            return 1;
+        }
+
+        std::string actual;
+        try {
+            actual = tmpl.apply(
+                ctx.at("messages"),
+                ctx.contains("tools") ? ctx.at("tools") : json(),
+                ctx.at("add_generation_prompt"),
+                ctx.contains("tools") ? json{
+                                            {"builtin_tools", {"wolfram_alpha", "brave_search"}}}
+                                    : json());
+        } catch (const std::exception &e) {
+            std::cerr << "Error applying template: " << e.what() << std::endl;
+            return 1;
+        }
+
         assert_equals(expected, actual);
         std::cout << "Test passed successfully." << std::endl;
         return 0;
-    } catch (const std::runtime_error &e) {
+    } catch (const std::exception &e) {
         std::cerr << "Test failed: " << e.what() << std::endl;
         return 1;
     }
