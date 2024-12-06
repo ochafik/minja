@@ -58,13 +58,20 @@ int main(int argc, char *argv[]) {
     std::string tmpl_file = argv[1];
     std::string ctx_file = argv[2];
     std::string golden_file = argv[3];
+    
+    auto tmpl_str = read_file(tmpl_file);
+    
+    if (ctx_file == "n/a")
+    {
+        std::cout << "# Skipping template: " << tmpl_file << "\n" << tmpl_str << std::endl;
+        return 127;
+    }
 
     std::cout << "# Testing template: " << tmpl_file << std::endl
               << "# With context: " << ctx_file << std::endl
               << "# Against golden file: " << golden_file << std::endl
               << std::flush;
 
-    auto tmpl_str = read_file(tmpl_file);
     auto ctx = json::parse(read_file(ctx_file));
 
     minja::chat_template tmpl(

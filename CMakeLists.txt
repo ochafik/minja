@@ -13,7 +13,6 @@ project(minja VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(MINJA_TEST_GATED_MODELS    "minja: test gated models"    OFF)
 if (MSVC)
     set(MINJA_FUZZTEST_ENABLED_DEFAULT OFF)
 else()

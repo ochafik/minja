@@ -25,48 +25,48 @@ set(MODEL_IDS
     # will be used to render each of the (relevant) test contexts into a golden file with
     # the official Python jinja2 library. Then a test case will be created to run the C++
     # minja implementation on the same template and context, and compare the output with the golden.
-    "abacusai/Fewshot-Metamath-OrcaVicuna-Mistral"
-    "bofenghuang/vigogne-2-70b-chat"
-    "deepseek-ai/deepseek-coder-33b-instruct"
-    "deepseek-ai/DeepSeek-Coder-V2-Instruct"
-    "deepseek-ai/DeepSeek-V2.5"
-    "indischepartij/MiniCPM-3B-OpenHermes-2.5-v2"
-    "meetkai/functionary-medium-v3.1"
-    "meetkai/functionary-medium-v3.2"
-    "microsoft/Phi-3-medium-4k-instruct"
-    "microsoft/Phi-3-mini-4k-instruct"
-    "microsoft/Phi-3-small-8k-instruct"
-    "microsoft/Phi-3.5-mini-instruct"
-    "microsoft/Phi-3.5-vision-instruct"
-    "mlabonne/AlphaMonarch-7B"
-    "NousResearch/Hermes-2-Pro-Llama-3-8B"
-    "NousResearch/Hermes-2-Pro-Mistral-7B"
-    "NousResearch/Hermes-3-Llama-3.1-70B"
-    "openchat/openchat-3.5-0106"
-    "OrionStarAI/Orion-14B-Chat"
-    "Qwen/Qwen2-7B-Instruct"
-    "Qwen/Qwen2-VL-7B-Instruct"
-    "Qwen/Qwen2.5-7B-Instruct"
-    "Qwen/Qwen2.5-Math-7B-Instruct"
-    "teknium/OpenHermes-2.5-Mistral-7B"
-    "TheBloke/FusionNet_34Bx2_MoE-AWQ"
-)
+    abacusai/Fewshot-Metamath-OrcaVicuna-Mistral
+    bofenghuang/vigogne-2-70b-chat
+    deepseek-ai/deepseek-coder-33b-instruct
+    deepseek-ai/DeepSeek-Coder-V2-Instruct
+    deepseek-ai/DeepSeek-V2.5
+    indischepartij/MiniCPM-3B-OpenHermes-2.5-v2
+    meetkai/functionary-medium-v3.1
+    meetkai/functionary-medium-v3.2
+    microsoft/Phi-3-medium-4k-instruct
+    microsoft/Phi-3-mini-4k-instruct
+    microsoft/Phi-3-small-8k-instruct
+    microsoft/Phi-3.5-mini-instruct
+    microsoft/Phi-3.5-vision-instruct
+    mlabonne/AlphaMonarch-7B
+    NousResearch/Hermes-2-Pro-Llama-3-8B
+    NousResearch/Hermes-2-Pro-Mistral-7B
+    NousResearch/Hermes-3-Llama-3.1-70B
+    openchat/openchat-3.5-0106
+    OrionStarAI/Orion-14B-Chat
+    Qwen/Qwen2-7B-Instruct
+    Qwen/Qwen2-VL-7B-Instruct
+    Qwen/Qwen2.5-7B-Instruct
+    Qwen/Qwen2.5-Math-7B-Instruct
+    teknium/OpenHermes-2.5-Mistral-7B
+    TheBloke/FusionNet_34Bx2_MoE-AWQ
 
-# Gated models: you will need to run `huggingface-cli login` (and be granted access) to download these
-if (MINJA_TEST_GATED_MODELS)
-    list(APPEND MODEL_IDS
-        "meta-llama/Llama-3.2-3B-Instruct"
-        "meta-llama/Meta-Llama-3.1-8B-Instruct"
-        "google/gemma-7b-it"
-        "google/gemma-2-2b-it"
-        "mistralai/Mistral-7B-Instruct-v0.2"
-        "mistralai/Mixtral-8x7B-Instruct-v0.1"
-        "mistralai/Mistral-Large-Instruct-2407"
-        "mistralai/Mistral-Large-Instruct-2411"
-        "mistralai/Mistral-Nemo-Instruct-2407"
-        "CohereForAI/c4ai-command-r-plus"
-    )
-endif()
+    # Gated models: you will need to run `huggingface-cli login` (and be granted access) to download these
+    CohereForAI/c4ai-command-r-plus
+    NexaAIDev/Octopus-v2
+    databricks/dbrx-instruct
+    meta-llama/Llama-3.2-3B-Instruct
+    meta-llama/Meta-Llama-3.1-8B-Instruct
+    google/gemma-7b-it
+    google/gemma-2-2b-it
+    mattshumer/Reflection-Llama-3.1-70B
+    mistralai/Mistral-7B-Instruct-v0.2
+    mistralai/Mixtral-8x7B-Instruct-v0.1
+    mistralai/Mistral-Large-Instruct-2407
+    mistralai/Mistral-Large-Instruct-2411
+    mistralai/Mistral-Nemo-Instruct-2407
+    nvidia/Llama-3.1-Nemotron-70B-Instruct-HF
+)
 
 # Create one test case for each {template, context} combination
 file(GLOB CONTEXT_FILES "${CMAKE_SOURCE_DIR}/tests/contexts/*.json")
@@ -85,6 +85,7 @@ foreach(test_case ${CHAT_TEMPLATE_TEST_CASES})
     list(GET test_args -1 last_arg)
     string(REGEX REPLACE "^[^ ]+/([^ /]+)\\.[^.]+$" "\\1" test_name "${last_arg}")
     add_test(NAME ${test_name} COMMAND $<TARGET_FILE:test-chat-template> ${test_args})
+    set_tests_properties(${test_name} PROPERTIES SKIP_RETURN_CODE 127)
 endforeach()
 
 if (MINJA_FUZZTEST_ENABLED)

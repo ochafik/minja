@@ -57,6 +57,10 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
     with open(template_file, 'w') as f:
         f.write(template_src)
 
+    if not context_files:
+        print(f"{template_file} n/a {template_file}")
+        return
+
     env = jinja2.Environment(
         trim_blocks=True,
         lstrip_blocks=True,
@@ -155,6 +159,7 @@ def main():
                     handle_chat_template(output_folder, model_id, ct['name'], ct['template'], context_files)
         except Exception as e:
             logger.error(f"Error processing model {model_id}: {e}")
+            handle_chat_template(output_folder, model_id, None, str(e), [])
 
 
 if __name__ == '__main__':
