@@ -47,6 +47,9 @@ TEST(SyntaxTest, SimpleCases) {
         "\r\nhey\r\nho!",
         render("\r\n{{ 'hey\r\nho!' }}\r\n", {}, {}));
     EXPECT_EQ(
+        "[2, 3]",
+        render("{{ range(*[2,4]) | list }}", {}, {}));
+    EXPECT_EQ(
         "abc",
         render("{% filter trim %} abc {% endfilter %}", {}, {}));
     EXPECT_EQ(
