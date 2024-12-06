@@ -48,6 +48,7 @@ set(MODEL_IDS
     "Qwen/Qwen2-VL-7B-Instruct"
     "Qwen/Qwen2.5-7B-Instruct"
     "Qwen/Qwen2.5-Math-7B-Instruct"
+    "Qwen/QwQ-32B-Preview" #"bartowski/QwQ-32B-Preview-GGUF"
     "teknium/OpenHermes-2.5-Mistral-7B"
     "TheBloke/FusionNet_34Bx2_MoE-AWQ"
 )
