@@ -7,7 +7,6 @@
 # SPDX-License-Identifier: MIT
 
 add_executable(test-syntax test-syntax.cpp)
-set_target_properties(test-syntax PROPERTIES CXX_STANDARD 17)
 target_link_libraries(test-syntax PRIVATE
     nlohmann_json::nlohmann_json
     gtest_main
@@ -16,7 +15,6 @@ target_link_libraries(test-syntax PRIVATE
 gtest_discover_tests(test-syntax)
 
 add_executable(test-chat-template test-chat-template.cpp)
-set_target_properties(test-chat-template PROPERTIES CXX_STANDARD 17)
 target_link_libraries(test-chat-template PRIVATE nlohmann_json::nlohmann_json)
 
 set(MODEL_IDS
@@ -35,7 +33,6 @@ set(MODEL_IDS
     deepseek-ai/deepseek-coder-33b-instruct
     deepseek-ai/DeepSeek-Coder-V2-Instruct
     deepseek-ai/DeepSeek-V2.5
-    dreamgen/WizardLM-2-7B
     google/gemma-2-2b-it # Gated
     google/gemma-7b-it # Gated
     indischepartij/MiniCPM-3B-OpenHermes-2.5-v2
@@ -66,6 +63,7 @@ set(MODEL_IDS
     Qwen/Qwen2-VL-7B-Instruct
     Qwen/Qwen2.5-7B-Instruct
     Qwen/Qwen2.5-Math-7B-Instruct
+    Qwen/QwQ-32B-Preview
     teknium/OpenHermes-2.5-Mistral-7B
     TheBloke/FusionNet_34Bx2_MoE-AWQ
 
@@ -75,6 +73,7 @@ set(MODEL_IDS
     # Can't find template(s), TODO:
     # ai21labs/Jamba-v0.1
     # apple/OpenELM-1_1B-Instruct 
+    # dreamgen/WizardLM-2-7B
     # xai-org/grok-1
 )
 
@@ -88,12 +87,18 @@ execute_process(
         ${MODEL_IDS}
     OUTPUT_VARIABLE CHAT_TEMPLATE_TEST_CASES
     OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY
 )
 string(REPLACE "\n" ";" CHAT_TEMPLATE_TEST_CASES "${CHAT_TEMPLATE_TEST_CASES}")
+list(LENGTH CHAT_TEMPLATE_TEST_CASES CHAT_TEMPLATE_TEST_CASES_COUNT)
+message(STATUS "Found ${CHAT_TEMPLATE_TEST_CASES_COUNT} chat template test cases")
+if (CHAT_TEMPLATE_TEST_CASES_COUNT LESS 10)
+    message(ERROR "Not enough chat template test cases found")
+endif()
 foreach(test_case ${CHAT_TEMPLATE_TEST_CASES})
     separate_arguments(test_args UNIX_COMMAND "${test_case}")
     list(GET test_args -1 last_arg)
-    string(REGEX REPLACE "^[^ ]+/([^ /]+)\\.[^.]+$" "\\1" test_name "${last_arg}")
+    string(REGEX REPLACE "^[^ ]+/([^ /\\]+)\\.[^.]+$" "\\1" test_name "${last_arg}")
     add_test(NAME ${test_name} COMMAND $<TARGET_FILE:test-chat-template> ${test_args})
     set_tests_properties(${test_name} PROPERTIES SKIP_RETURN_CODE 127)
 endforeach()

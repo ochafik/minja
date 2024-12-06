@@ -27,22 +27,26 @@ static std::string render(const std::string & template_str, const json & binding
 }
 
 const minja::Options lstrip_blocks {
-    .trim_blocks = false,
-    .lstrip_blocks = true,
-    .keep_trailing_newline = false,
+    /* .trim_blocks = */ false,
+    /* .lstrip_blocks = */ true,
+    /* .keep_trailing_newline = */ false,
 };
 const minja::Options trim_blocks {
-    .trim_blocks = true,
-    .lstrip_blocks = false,
-    .keep_trailing_newline = false,
+    /* .trim_blocks = */ true,
+    /* .lstrip_blocks = */ false,
+    /* .keep_trailing_newline = */ false,
 };
 const minja::Options lstrip_trim_blocks {
-    .trim_blocks = true,
-    .lstrip_blocks = true,
-    .keep_trailing_newline = false,
+    /* .trim_blocks = */ true,
+    /* .lstrip_blocks = */ true,
+    /* .keep_trailing_newline = */ false,
 };
 
 TEST(SyntaxTest, SimpleCases) {
+    EXPECT_EQ(
+        "\r\nhey\r\nho!",
+        render("\r\n{{ 'hey\r\nho!' }}\r\n", {}, {}));
+
     EXPECT_EQ(
         "a\n  b\n|  a\n  b\n",
         render("{% set txt = 'a\\nb\\n' %}{{ txt | indent(2) }}|{{ txt | indent(2, first=true) }}", {}, {}));

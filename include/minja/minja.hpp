@@ -449,7 +449,7 @@ public:
   Value operator*(const Value& rhs) const {
       if (is_string() && rhs.is_number_integer()) {
         std::ostringstream out;
-        for (int i = 0, n = rhs.get<int64_t>(); i < n; ++i) {
+        for (int64_t i = 0, n = rhs.get<int64_t>(); i < n; ++i) {
           out << to_str();
         }
         return out.str();
