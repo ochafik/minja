@@ -24,9 +24,6 @@ option(MINJA_FUZZTEST_ENABLED       "minja: fuzztests enabled"                  
 option(MINJA_FUZZTEST_FUZZING_MODE  "minja: run fuzztests (if enabled) in fuzzing mode"     OFF)
 option(MINJA_USE_VENV               "minja: use Python venv for build"                      MINJA_USE_VENV_DEFAULT)
 
-# Note: tests require C++14 because google/fuzztest depends on a version of gtest that requires it
-# (and we don't want to use an older version of fuzztest)
-# Examples are built w/ C++11 to check the compatibility of the library.
 set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
