@@ -7,7 +7,7 @@
 # SPDX-License-Identifier: MIT
 
 add_executable(test-syntax test-syntax.cpp)
-set_target_properties(test-syntax PROPERTIES CXX_STANDARD 20)
+set_target_properties(test-syntax PROPERTIES CXX_STANDARD 17)
 target_link_libraries(test-syntax PRIVATE
     nlohmann_json::nlohmann_json
     gtest_main
