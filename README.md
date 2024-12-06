@@ -14,7 +14,7 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 ## Design goals:
 
 - Support each and every major LLM found on HuggingFace
-    - See `MODEL_IDS` in [tests/CMakeLists.txt](./tests/CMakeLists.txt) for the list of models currently supported
+  - See `MODEL_IDS` in [tests/CMakeLists.txt](./tests/CMakeLists.txt) for the list of models currently supported
 - Easy to integrate to/with projects such as [llama.cpp](https://github.com/ggerganov/llama.cpp) or [gemma.cpp](https://github.com/google/gemma.cpp):
   - Header-only
   - C++11
@@ -26,7 +26,7 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 - Address glaring Prompt injection risks in current Jinja chat templating practices. See [Security & Privacy](#security--privacy) below
 - Additional features from Jinja that aren't used by the template(s) of any major LLM (no feature creep!)
-    - Please don't submit PRs with such features, they will unfortunately be rejected.
+  - Please don't submit PRs with such features, they will unfortunately be rejected.
 - Full Jinja compliance (neither syntax-wise, nor filters / tests / globals)
 
 ## Usage:
@@ -201,7 +201,7 @@ Main limitations (non-exhaustive list):
     - Which version of GCC / clang did you compile the tests with? On which OS version?
     - If you intend to contribute a fix:
         - Please read [CONTRIBUTING](./CONTRIBUTING.md) first. You'd have to sign a CLA, which your employer may need to accept.
-        - Please test as many gated models as possible (authenticate w/ `huggingface-cli login` first to test gated models you have access to; see  `MODEL_IDS` in [tests/CMakeLists.txt](./tests/CMakeLists.txt))
+        - Please test as many gated models as possible (use `cmake -B build -DMINJA_TEST_GATED_MODELS=1 ...` and edit MODEL_LIST appropriately)
 
 - For bonus points, check the style of your edits with:
 
