@@ -28,9 +28,7 @@ set(MODEL_IDS
     #
     # For Gated models, you'll need to run `huggingface-cli login` (and be granted access) to download their template.
     
-
     abacusai/Fewshot-Metamath-OrcaVicuna-Mistral
-    apple/OpenELM-1_1B-Instruct
     bofenghuang/vigogne-2-70b-chat
     CohereForAI/c4ai-command-r-plus # Gated
     databricks/dbrx-instruct # Gated
@@ -38,7 +36,6 @@ set(MODEL_IDS
     deepseek-ai/DeepSeek-Coder-V2-Instruct
     deepseek-ai/DeepSeek-V2.5
     dreamgen/WizardLM-2-7B
-    # fireworks-ai/llama-3-firefunction-v2 # Broken, TODO!
     google/gemma-2-2b-it # Gated
     google/gemma-7b-it # Gated
     indischepartij/MiniCPM-3B-OpenHermes-2.5-v2
@@ -71,6 +68,14 @@ set(MODEL_IDS
     Qwen/Qwen2.5-Math-7B-Instruct
     teknium/OpenHermes-2.5-Mistral-7B
     TheBloke/FusionNet_34Bx2_MoE-AWQ
+
+    # Broken, TODO:
+    # fireworks-ai/llama-3-firefunction-v2 
+
+    # Can't find template(s), TODO:
+    # ai21labs/Jamba-v0.1
+    # apple/OpenELM-1_1B-Instruct 
+    # xai-org/grok-1
 )
 
 # Create one test case for each {template, context} combination

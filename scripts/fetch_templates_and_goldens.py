@@ -151,6 +151,7 @@ def main():
             except json.JSONDecodeError:
                 config = json.loads(re.sub(r'\}([\n\s]*\}[\n\s]*\],[\n\s]*"clean_up_tokenization_spaces")', r'\1', config_str))
 
+            assert 'chat_template' in config, 'No "chat_template" entry in tokenizer_config.json!'
             chat_template = config['chat_template']
             if isinstance(chat_template, str):
                 handle_chat_template(output_folder, model_id, None, chat_template, context_files)
