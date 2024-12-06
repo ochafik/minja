@@ -49,7 +49,9 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         "abc",
         render("{% filter trim %} abc {% endfilter %}", {}, {}));
-
+    EXPECT_EQ(
+        "[1, 2, 3]",
+        render("{{ [1] + [2, 3] }}", {}, {}));
     EXPECT_EQ(
         "a\n  b\n|  a\n  b\n",
         render("{% set txt = 'a\\nb\\n' %}{{ txt | indent(2) }}|{{ txt | indent(2, first=true) }}", {}, {}));

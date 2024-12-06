@@ -433,12 +433,18 @@ public:
     return dump();
   }
   Value operator+(const Value& rhs) const {
-      if (is_string() || rhs.is_string())
+      if (is_string() || rhs.is_string()) {
         return to_str() + rhs.to_str();
-      else if (is_number_integer() && rhs.is_number_integer())
+      } else if (is_number_integer() && rhs.is_number_integer()) {
         return get<int64_t>() + rhs.get<int64_t>();
-      else
+      } else if (is_array() && rhs.is_array()) {
+        auto res = Value::array();
+        for (const auto& item : *array_) res.push_back(item);
+        for (const auto& item : *rhs.array_) res.push_back(item);
+        return res;
+      } else {
         return get<double>() + rhs.get<double>();
+      }
   }
   Value operator-(const Value& rhs) const {
       if (is_number_integer() && rhs.is_number_integer())
