@@ -13,17 +13,11 @@ target_link_libraries(test-syntax PRIVATE
     gtest_main
     gmock
 )
-if (MSVC)
-    set_target_properties(test-syntax PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded")
-endif()
 gtest_discover_tests(test-syntax)
 
 add_executable(test-chat-template test-chat-template.cpp)
 set_target_properties(test-chat-template PROPERTIES CXX_STANDARD 17)
 target_link_libraries(test-chat-template PRIVATE nlohmann_json::nlohmann_json)
-if (MSVC)
-    set_target_properties(test-chat-template PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded")
-endif()
 
 set(MODEL_IDS
     # List of model IDs to test the chat template of.
