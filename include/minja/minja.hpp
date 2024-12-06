@@ -270,6 +270,20 @@ public:
     return true;
   }
 
+  int64_t to_int() const {
+    if (is_null()) return 0;
+    if (is_boolean()) return get<bool>() ? 1 : 0;
+    if (is_number()) return static_cast<int64_t>(get<double>());
+    if (is_string()) {
+      try {
+        return std::stol(get<std::string>());
+      } catch (const std::exception &) {
+        return 0;
+      }
+    }
+    return 0;
+  }
+
   bool operator<(const Value & other) const {
     if (is_null())
       throw std::runtime_error("Undefined value or reference");
@@ -2514,8 +2528,10 @@ inline std::shared_ptr<Context> Context::builtins() {
       return args.at("value");
   }));
   globals.set("string", simple_function("string", { "value" }, [](const std::shared_ptr<Context> &, Value & args) -> Value {
-      auto & items = args.at("value");
-      return items.to_str();
+      return args.at("value").to_str();
+  }));
+  globals.set("int", simple_function("int", { "value" }, [](const std::shared_ptr<Context> &, Value & args) -> Value {
+      return args.at("value").to_int();
   }));
   globals.set("list", simple_function("list", { "items" }, [](const std::shared_ptr<Context> &, Value & args) -> Value {
       auto & items = args.at("items");
