@@ -57,6 +57,10 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
     with open(template_file, 'w') as f:
         f.write(template_src)
 
+    if not context_files:
+        print(f"{template_file} n/a {template_file}")
+        return
+
     env = jinja2.Environment(
         trim_blocks=True,
         lstrip_blocks=True,
@@ -147,6 +151,7 @@ def main():
             except json.JSONDecodeError:
                 config = json.loads(re.sub(r'\}([\n\s]*\}[\n\s]*\],[\n\s]*"clean_up_tokenization_spaces")', r'\1', config_str))
 
+            assert 'chat_template' in config, 'No "chat_template" entry in tokenizer_config.json!'
             chat_template = config['chat_template']
             if isinstance(chat_template, str):
                 handle_chat_template(output_folder, model_id, None, chat_template, context_files)
@@ -155,6 +160,7 @@ def main():
                     handle_chat_template(output_folder, model_id, ct['name'], ct['template'], context_files)
         except Exception as e:
             logger.error(f"Error processing model {model_id}: {e}")
+            handle_chat_template(output_folder, model_id, None, str(e), [])
 
 
 if __name__ == '__main__':
