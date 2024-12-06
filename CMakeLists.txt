@@ -29,6 +29,12 @@ option(MINJA_USE_VENV               "minja: use Python venv for build"          
 # Examples are built w/ C++11 to check the compatibility of the library.
 set(CMAKE_CXX_STANDARD 11)
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+if (NOT MSVC)
+    add_compile_options(-Wall -Wextra -pedantic -Werror)
+endif()
+
 include(FetchContent)
 
 # Fetch nlohmann/json
@@ -56,11 +62,6 @@ endif()
 if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
-endif()
-
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-if (NOT MSVC)
-    add_compile_options(-Wall -Wextra -pedantic -Werror)
 endif()
 
 # Create a python venv w/ the required dependencies
