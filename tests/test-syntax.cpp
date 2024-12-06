@@ -44,6 +44,10 @@ const minja::Options lstrip_trim_blocks {
 
 TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
+        "\r\nhey\r\nho!",
+        render("\r\n{{ 'hey\r\nho!' }}\r\n", {}, {}));
+
+    EXPECT_EQ(
         "a\n  b\n|  a\n  b\n",
         render("{% set txt = 'a\\nb\\n' %}{{ txt | indent(2) }}|{{ txt | indent(2, first=true) }}", {}, {}));
     EXPECT_EQ(

@@ -26,11 +26,11 @@ jobs:
           # ubuntu-22.04,
           ubuntu-latest,
           # windows-2019,
-          windows-latest,
+          # windows-latest,
         ]
         type: [
           Release,
-          # Debug,
+          Debug,
         ]
     runs-on:  ${{ matrix.os }}
     timeout-minutes: 30
