@@ -13,14 +13,15 @@ project(minja VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(MINJA_TEST_GATED_MODELS    "minja: test gated models"    OFF)
 if (MSVC)
     set(MINJA_FUZZTEST_ENABLED_DEFAULT OFF)
 else()
     set(MINJA_FUZZTEST_ENABLED_DEFAULT ON)
 endif()
-option(MINJA_FUZZTEST_ENABLED       "minja: fuzztests enabled"  MINJA_FUZZTEST_ENABLED_DEFAULT)
+option(MINJA_TEST_GATED_MODELS      "minja: test gated models"                              OFF)
+option(MINJA_FUZZTEST_ENABLED       "minja: fuzztests enabled"                              MINJA_FUZZTEST_ENABLED_DEFAULT)
 option(MINJA_FUZZTEST_FUZZING_MODE  "minja: run fuzztests (if enabled) in fuzzing mode"     OFF)
+option(MINJA_USE_VENV               "minja: use Python venv for build"                      ON)
 
 # Note: tests require C++14 because google/fuzztest depends on a version of gtest that requires it
 # (and we don't want to use an older version of fuzztest)
@@ -57,20 +58,24 @@ if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Create a python venv w/ the required dependencies
-find_package(Python3 COMPONENTS Interpreter REQUIRED)
-set(VENV_DIR "${CMAKE_BINARY_DIR}/venv")
-if(WIN32)
-    set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
-else()
-    set(VENV_PYTHON "${VENV_DIR}/bin/python")
+# Force-set -DPython3_FIND_STRATEGY=LOCATION
+set(Python_FIND_STRATEGY LOCATION CACHE STRING "Python find strategy" FORCE)
+find_package(Python COMPONENTS Interpreter REQUIRED)
+if(MINJA_USE_VENV)
+    set(VENV_DIR "${CMAKE_BINARY_DIR}/venv")
+    if(WIN32)
+        set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
+    else()
+        set(VENV_PYTHON "${VENV_DIR}/bin/python")
+    endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}"
+        COMMAND_ERROR_IS_FATAL ANY)
+    execute_process(
+        COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
+        COMMAND_ERROR_IS_FATAL ANY)
+    set(Python_EXECUTABLE "${VENV_PYTHON}" CACHE FILEPATH "Path to Python executable in venv" FORCE)
 endif()
-execute_process(
-    COMMAND ${Python3_EXECUTABLE} -m venv "${VENV_DIR}"
-    COMMAND_ERROR_IS_FATAL ANY)
-execute_process(
-    COMMAND ${VENV_PYTHON} -m pip install -r "${CMAKE_SOURCE_DIR}/requirements.txt"
-    COMMAND_ERROR_IS_FATAL ANY)
-set(Python_EXECUTABLE "${VENV_PYTHON}" CACHE FILEPATH "Path to Python executable in venv" FORCE)
 message(STATUS "Python executable: ${Python_EXECUTABLE}")
 
 find_program(CPPCHECK cppcheck)
