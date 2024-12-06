@@ -35,7 +35,6 @@ set(MODEL_IDS
     deepseek-ai/deepseek-coder-33b-instruct
     deepseek-ai/DeepSeek-Coder-V2-Instruct
     deepseek-ai/DeepSeek-V2.5
-    dreamgen/WizardLM-2-7B
     google/gemma-2-2b-it # Gated
     google/gemma-7b-it # Gated
     indischepartij/MiniCPM-3B-OpenHermes-2.5-v2
@@ -76,6 +75,7 @@ set(MODEL_IDS
     # Can't find template(s), TODO:
     # ai21labs/Jamba-v0.1
     # apple/OpenELM-1_1B-Instruct 
+    # dreamgen/WizardLM-2-7B
     # xai-org/grok-1
 )
 
