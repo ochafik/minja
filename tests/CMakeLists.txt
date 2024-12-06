@@ -87,8 +87,14 @@ execute_process(
         ${MODEL_IDS}
     OUTPUT_VARIABLE CHAT_TEMPLATE_TEST_CASES
     OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY
 )
 string(REPLACE "\n" ";" CHAT_TEMPLATE_TEST_CASES "${CHAT_TEMPLATE_TEST_CASES}")
+list(LENGTH CHAT_TEMPLATE_TEST_CASES CHAT_TEMPLATE_TEST_CASES_COUNT)
+message(STATUS "Found ${CHAT_TEMPLATE_TEST_CASES_COUNT} chat template test cases")
+if (CHAT_TEMPLATE_TEST_CASES_COUNT LESS 10)
+    message(ERROR "Not enough chat template test cases found")
+endif()
 foreach(test_case ${CHAT_TEMPLATE_TEST_CASES})
     separate_arguments(test_args UNIX_COMMAND "${test_case}")
     list(GET test_args -1 last_arg)
