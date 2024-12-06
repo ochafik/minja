@@ -662,7 +662,7 @@ enum SpaceHandling { Keep, Strip, StripSpaces, StripNewline };
 
 class TemplateToken {
 public:
-    enum class Type { Text, Expression, If, Else, Elif, EndIf, For, EndFor, Set, EndSet, Comment, Macro, EndMacro };
+    enum class Type { Text, Expression, If, Else, Elif, EndIf, For, EndFor, Set, EndSet, Comment, Macro, EndMacro, Filter, EndFilter };
 
     static std::string typeToString(Type t) {
         switch (t) {
@@ -679,6 +679,8 @@ public:
             case Type::Comment: return "comment";
             case Type::Macro: return "macro";
             case Type::EndMacro: return "endmacro";
+            case Type::Filter: return "filter";
+            case Type::EndFilter: return "endfilter";
         }
         return "Unknown";
     }
@@ -729,6 +731,16 @@ struct MacroTemplateToken : public TemplateToken {
 
 struct EndMacroTemplateToken : public TemplateToken {
     EndMacroTemplateToken(const Location & location, SpaceHandling pre, SpaceHandling post) : TemplateToken(Type::EndMacro, location, pre, post) {}
+};
+
+struct FilterTemplateToken : public TemplateToken {
+    std::shared_ptr<Expression> filter;
+    FilterTemplateToken(const Location & location, SpaceHandling pre, SpaceHandling post, std::shared_ptr<Expression> && filter)
+      : TemplateToken(Type::Filter, location, pre, post), filter(std::move(filter)) {}
+};
+
+struct EndFilterTemplateToken : public TemplateToken {
+    EndFilterTemplateToken(const Location & location, SpaceHandling pre, SpaceHandling post) : TemplateToken(Type::EndFilter, location, pre, post) {}
 };
 
 struct ForTemplateToken : public TemplateToken {
@@ -975,6 +987,29 @@ public:
             return body->render(call_context);
         });
         macro_context->set(name->get_name(), callable);
+    }
+};
+
+class FilterNode : public TemplateNode {
+    std::shared_ptr<Expression> filter;
+    std::shared_ptr<TemplateNode> body;
+
+public:
+    FilterNode(const Location & location, std::shared_ptr<Expression> && f, std::shared_ptr<TemplateNode> && b)
+        : TemplateNode(location), filter(std::move(f)), body(std::move(b)) {}
+
+    void do_render(std::ostringstream & out, const std::shared_ptr<Context> & context) const override {
+        if (!filter) throw std::runtime_error("FilterNode.filter is null");
+        if (!body) throw std::runtime_error("FilterNode.body is null");
+        auto filter_value = filter->evaluate(context);
+        if (!filter_value.is_callable()) {
+            throw std::runtime_error("Filter must be a callable: " + filter_value.dump());
+        }
+        std::string rendered_body = body->render(context);
+        
+        Value::Arguments filter_args = {{Value(rendered_body)}, {}};
+        auto result = filter_value.call(context, filter_args);
+        out << result.to_str();
     }
 };
 
@@ -2029,7 +2064,7 @@ private:
       static std::regex comment_tok(R"(\{#([-~]?)(.*?)([-~]?)#\})");
       static std::regex expr_open_regex(R"(\{\{([-~])?)");
       static std::regex block_open_regex(R"(^\{%([-~])?[\s\n\r]*)");
-      static std::regex block_keyword_tok(R"((if|else|elif|endif|for|endfor|set|endset|block|endblock|macro|endmacro)\b)");
+      static std::regex block_keyword_tok(R"((if|else|elif|endif|for|endfor|set|endset|block|endblock|macro|endmacro|filter|endfilter)\b)");
       static std::regex text_regex(R"([\s\S\n\r]*?($|(?=\{\{|\{%|\{#)))");
       static std::regex expr_close_regex(R"([\s\n\r]*([-~])?\}\})");
       static std::regex block_close_regex(R"([\s\n\r]*([-~])?%\})");
@@ -2145,6 +2180,15 @@ private:
             } else if (keyword == "endmacro") {
               auto post_space = parseBlockClose();
               tokens.push_back(nonstd_make_unique<EndMacroTemplateToken>(location, pre_space, post_space));
+            } else if (keyword == "filter") {
+              auto filter = parseExpression();
+              if (!filter) throw std::runtime_error("Expected expression in filter block");
+
+              auto post_space = parseBlockClose();
+              tokens.push_back(nonstd_make_unique<FilterTemplateToken>(location, pre_space, post_space, std::move(filter)));
+            } else if (keyword == "endfilter") {
+              auto post_space = parseBlockClose();
+              tokens.push_back(nonstd_make_unique<EndFilterTemplateToken>(location, pre_space, post_space));
             } else {
               throw std::runtime_error("Unexpected block: " + keyword);
             }
@@ -2241,11 +2285,18 @@ private:
                   throw unterminated(**start);
               }
               children.emplace_back(std::make_shared<MacroNode>(token->location, std::move(macro_token->name), std::move(macro_token->params), std::move(body)));
+          } else if (auto filter_token = dynamic_cast<FilterTemplateToken*>(token.get())) {
+              auto body = parseTemplate(begin, it, end);
+              if (it == end || (*(it++))->type != TemplateToken::Type::EndFilter) {
+                  throw unterminated(**start);
+              }
+              children.emplace_back(std::make_shared<FilterNode>(token->location, std::move(filter_token->filter), std::move(body)));
           } else if (dynamic_cast<CommentTemplateToken*>(token.get())) {
               // Ignore comments
           } else if (dynamic_cast<EndForTemplateToken*>(token.get())
                   || dynamic_cast<EndSetTemplateToken*>(token.get())
                   || dynamic_cast<EndMacroTemplateToken*>(token.get())
+                  || dynamic_cast<EndFilterTemplateToken*>(token.get())
                   || dynamic_cast<EndIfTemplateToken*>(token.get())
                   || dynamic_cast<ElseTemplateToken*>(token.get())
                   || dynamic_cast<ElifTemplateToken*>(token.get())) {

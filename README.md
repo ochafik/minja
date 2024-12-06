@@ -96,6 +96,7 @@ Minja supports the following subset of the [Jinja2/3 template syntax](https://ji
 - `for` (`recursive`) (`if`) / `else` / `endfor` w/ `loop.*` (including `loop.cycle`) and destructuring
 - `set` w/ namespaces & destructuring
 - `macro` / `endmacro`
+- `filter` / `endfilter`
 - Extensible filters collection: `count`, `dictsort`, `equalto`, `e` / `escape`, `items`, `join`, `joiner`, `namespace`, `raise_exception`, `range`, `reject`, `tojson`, `trim`
 
 Main limitations (non-exhaustive list):

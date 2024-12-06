@@ -46,6 +46,9 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         "\r\nhey\r\nho!",
         render("\r\n{{ 'hey\r\nho!' }}\r\n", {}, {}));
+    EXPECT_EQ(
+        "abc",
+        render("{% filter trim %} abc {% endfilter %}", {}, {}));
 
     EXPECT_EQ(
         "a\n  b\n|  a\n  b\n",
@@ -385,11 +388,13 @@ TEST(SyntaxTest, SimpleCases) {
     expect_throws_with_message_substr([]() { render("{% endif %}", {}, {}); }, "Unexpected endif");
     expect_throws_with_message_substr([]() { render("{% elif 1 %}", {}, {}); }, "Unexpected elif");
     expect_throws_with_message_substr([]() { render("{% endfor %}", {}, {}); }, "Unexpected endfor");
+    expect_throws_with_message_substr([]() { render("{% endfilter %}", {}, {}); }, "Unexpected endfilter");
 
     expect_throws_with_message_substr([]() { render("{% if 1 %}", {}, {}); }, "Unterminated if");
     expect_throws_with_message_substr([]() { render("{% for x in 1 %}", {}, {}); }, "Unterminated for");
     expect_throws_with_message_substr([]() { render("{% if 1 %}{% else %}", {}, {}); }, "Unterminated if");
     expect_throws_with_message_substr([]() { render("{% if 1 %}{% else %}{% elif 1 %}{% endif %}", {}, {}); }, "Unterminated if");
+    expect_throws_with_message_substr([]() { render("{% filter trim %}", {}, {}); }, "Unterminated filter");
 
     EXPECT_EQ(
         "3",
