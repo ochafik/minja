@@ -7,7 +7,6 @@
 # SPDX-License-Identifier: MIT
 
 add_executable(test-syntax test-syntax.cpp)
-set_target_properties(test-syntax PROPERTIES CXX_STANDARD 17)
 target_link_libraries(test-syntax PRIVATE
     nlohmann_json::nlohmann_json
     gtest_main
@@ -16,7 +15,6 @@ target_link_libraries(test-syntax PRIVATE
 gtest_discover_tests(test-syntax)
 
 add_executable(test-chat-template test-chat-template.cpp)
-set_target_properties(test-chat-template PROPERTIES CXX_STANDARD 17)
 target_link_libraries(test-chat-template PRIVATE nlohmann_json::nlohmann_json)
 
 set(MODEL_IDS

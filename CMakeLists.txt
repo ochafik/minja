@@ -27,7 +27,7 @@ option(MINJA_USE_VENV               "minja: use Python venv for build"          
 # Note: tests require C++14 because google/fuzztest depends on a version of gtest that requires it
 # (and we don't want to use an older version of fuzztest)
 # Examples are built w/ C++11 to check the compatibility of the library.
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -64,11 +64,10 @@ if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-# Create a python venv w/ the required dependencies
-# Force-set -DPython3_FIND_STRATEGY=LOCATION
 set(Python_FIND_STRATEGY LOCATION CACHE STRING "Python find strategy" FORCE)
 find_package(Python COMPONENTS Interpreter REQUIRED)
 if(MINJA_USE_VENV)
+    # Create a python venv w/ the required dependencies
     set(VENV_DIR "${CMAKE_BINARY_DIR}/venv")
     if(WIN32)
         set(VENV_PYTHON "${VENV_DIR}/Scripts/python.exe")
