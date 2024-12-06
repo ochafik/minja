@@ -18,7 +18,7 @@
 #include <unordered_set>
 #include <json.hpp>
 
-#if defined(_WIN32) || defined(_WIN64)
+#ifdef _WIN32
 #define ENDL "\r\n"
 #else
 #define ENDL "\n"
@@ -2327,7 +2327,12 @@ private:
 public:
 
     static std::shared_ptr<TemplateNode> parse(const std::string& template_str, const Options & options) {
+#ifdef __WIN32
+        static std::regex cr_regex("\\r");
+        Parser parser(std::make_shared<std::string>(std::regex_replace(template_str, cr_regex, "")), options);
+#else
         Parser parser(std::make_shared<std::string>(template_str), options);
+#endif
         auto tokens = parser.tokenize();
         TemplateTokenIterator begin = tokens.begin();
         auto it = begin;
