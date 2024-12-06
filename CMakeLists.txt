@@ -57,6 +57,14 @@ if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+if (MSVC)
+    add_compile_options(/W4 /WX)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd")
+else()
+    add_compile_options(-Wall -Wextra -pedantic -Werror)
+endif()
+
 # Create a python venv w/ the required dependencies
 # Force-set -DPython3_FIND_STRATEGY=LOCATION
 set(Python_FIND_STRATEGY LOCATION CACHE STRING "Python find strategy" FORCE)
