@@ -30,42 +30,13 @@ struct Options {
     bool keep_trailing_newline;  // don't remove last newline
 };
 
+struct ArgumentsValue;
+
 /* Values that behave roughly like in Python. */
 class Value : public std::enable_shared_from_this<Value> {
 public:
-  struct Arguments {
-    std::vector<Value> args;
-    std::vector<std::pair<std::string, Value>> kwargs;
-
-    bool has_named(const std::string & name) {
-      for (const auto & p : kwargs) {
-        if (p.first == name) return true;
-      }
-      return false;
-    }
-
-    Value get_named(const std::string & name) {
-      for (const auto & [key, value] : kwargs) {
-        if (key == name) return value;
-      }
-      return Value();
-    }
-
-    bool empty() {
-      return args.empty() && kwargs.empty();
-    }
-
-    void expectArgs(const std::string & method_name, const std::pair<size_t, size_t> & pos_count, const std::pair<size_t, size_t> & kw_count) {
-      if (args.size() < pos_count.first || args.size() > pos_count.second || kwargs.size() < kw_count.first || kwargs.size() > kw_count.second) {
-        std::ostringstream out;
-        out << method_name << " must have between " << pos_count.first << " and " << pos_count.second << " positional arguments and between " << kw_count.first << " and " << kw_count.second << " keyword arguments";
-        throw std::runtime_error(out.str());
-      }
-    }
-  };
-
-  using CallableType = std::function<Value(const std::shared_ptr<Context> &, Arguments &)>;
-  using FilterType = std::function<Value(const std::shared_ptr<Context> &, Arguments &)>;
+  using CallableType = std::function<Value(const std::shared_ptr<Context> &, ArgumentsValue &)>;
+  using FilterType = std::function<Value(const std::shared_ptr<Context> &, ArgumentsValue &)>;
 
 private:
   using ObjectType = nlohmann::ordered_map<json, Value>;  // Only contains primitive keys
@@ -240,7 +211,7 @@ public:
     if (!key.is_hashable()) throw std::runtime_error("Unashable type: " + dump());
     (*object_)[key.primitive_] = value;
   }
-  Value call(const std::shared_ptr<Context> & context, Value::Arguments & args) const {
+  Value call(const std::shared_ptr<Context> & context, ArgumentsValue & args) const {
     if (!callable_) throw std::runtime_error("Value is not callable: " + dump());
     return (*callable_)(context, args);
   }
@@ -297,6 +268,20 @@ public:
     if (is_string()) return !get<std::string>().empty();
     if (is_array()) return !empty();
     return true;
+  }
+
+  int64_t to_int() const {
+    if (is_null()) return 0;
+    if (is_boolean()) return get<bool>() ? 1 : 0;
+    if (is_number()) return static_cast<int64_t>(get<double>());
+    if (is_string()) {
+      try {
+        return std::stol(get<std::string>());
+      } catch (const std::exception &) {
+        return 0;
+      }
+    }
+    return 0;
   }
 
   bool operator<(const Value & other) const {
@@ -470,6 +455,37 @@ public:
   }
 };
 
+struct ArgumentsValue {
+  std::vector<Value> args;
+  std::vector<std::pair<std::string, Value>> kwargs;
+
+  bool has_named(const std::string & name) {
+    for (const auto & p : kwargs) {
+      if (p.first == name) return true;
+    }
+    return false;
+  }
+
+  Value get_named(const std::string & name) {
+    for (const auto & [key, value] : kwargs) {
+      if (key == name) return value;
+    }
+    return Value();
+  }
+
+  bool empty() {
+    return args.empty() && kwargs.empty();
+  }
+
+  void expectArgs(const std::string & method_name, const std::pair<size_t, size_t> & pos_count, const std::pair<size_t, size_t> & kw_count) {
+    if (args.size() < pos_count.first || args.size() > pos_count.second || kwargs.size() < kw_count.first || kwargs.size() > kw_count.second) {
+      std::ostringstream out;
+      out << method_name << " must have between " << pos_count.first << " and " << pos_count.second << " positional arguments and between " << kw_count.first << " and " << kw_count.second << " keyword arguments";
+      throw std::runtime_error(out.str());
+    }
+  }
+};
+
 template <>
 inline json Value::get<json>() const {
   if (is_primitive()) return primitive_;
@@ -585,30 +601,6 @@ class Expression {
 protected:
     virtual Value do_evaluate(const std::shared_ptr<Context> & context) const = 0;
 public:
-    struct Arguments {
-        std::vector<std::shared_ptr<Expression>> args;
-        std::vector<std::pair<std::string, std::shared_ptr<Expression>>> kwargs;
-
-        void expectArgs(const std::string & method_name, const std::pair<size_t, size_t> & pos_count, const std::pair<size_t, size_t> & kw_count) const {
-          if (args.size() < pos_count.first || args.size() > pos_count.second || kwargs.size() < kw_count.first || kwargs.size() > kw_count.second) {
-            std::ostringstream out;
-            out << method_name << " must have between " << pos_count.first << " and " << pos_count.second << " positional arguments and between " << kw_count.first << " and " << kw_count.second << " keyword arguments";
-            throw std::runtime_error(out.str());
-          }
-        }
-
-        Value::Arguments evaluate(const std::shared_ptr<Context> & context) const {
-            Value::Arguments vargs;
-            for (const auto& arg : this->args) {
-                vargs.args.push_back(arg->evaluate(context));
-            }
-            for (const auto& [name, value] : this->kwargs) {
-                vargs.kwargs.push_back({name, value->evaluate(context)});
-            }
-            return vargs;
-        }
-    };
-
     using Parameters = std::vector<std::pair<std::string, std::shared_ptr<Expression>>>;
 
     Location location;
@@ -896,7 +888,7 @@ public:
               loop.set("length", (int64_t) filtered_items.size());
 
               size_t cycle_index = 0;
-              loop.set("cycle", Value::callable([&](const std::shared_ptr<Context> &, Value::Arguments & args) {
+              loop.set("cycle", Value::callable([&](const std::shared_ptr<Context> &, ArgumentsValue & args) {
                   if (args.args.empty() || !args.kwargs.empty()) {
                       throw std::runtime_error("cycle() expects at least 1 positional argument and no named arg");
                   }
@@ -924,7 +916,7 @@ public:
       };
 
       if (recursive) {
-        loop_function = [&](const std::shared_ptr<Context> &, Value::Arguments & args) {
+        loop_function = [&](const std::shared_ptr<Context> &, ArgumentsValue & args) {
             if (args.args.size() != 1 || !args.kwargs.empty() || !args.args[0].is_array()) {
                 throw std::runtime_error("loop() expects exactly 1 positional iterable argument");
             }
@@ -956,7 +948,7 @@ public:
     void do_render(std::ostringstream &, const std::shared_ptr<Context> & macro_context) const override {
         if (!name) throw std::runtime_error("MacroNode.name is null");
         if (!body) throw std::runtime_error("MacroNode.body is null");
-        auto callable = Value::callable([&](const std::shared_ptr<Context> & context, Value::Arguments & args) {
+        auto callable = Value::callable([&](const std::shared_ptr<Context> & context, ArgumentsValue & args) {
             auto call_context = macro_context;
             std::vector<bool> param_set(params.size(), false);
             for (size_t i = 0, n = args.args.size(); i < n; i++) {
@@ -1003,7 +995,7 @@ public:
         }
         std::string rendered_body = body->render(context);
         
-        Value::Arguments filter_args = {{Value(rendered_body)}, {}};
+        ArgumentsValue filter_args = {{Value(rendered_body)}, {}};
         auto result = filter_value.call(context, filter_args);
         out << result.to_str();
     }
@@ -1159,11 +1151,9 @@ public:
 
 class UnaryOpExpr : public Expression {
 public:
-    enum class Op { Plus, Minus, LogicalNot };
-private:
+    enum class Op { Plus, Minus, LogicalNot, Expansion, ExpansionDict };
     std::shared_ptr<Expression> expr;
     Op op;
-public:
     UnaryOpExpr(const Location & location, std::shared_ptr<Expression> && e, Op o)
       : Expression(location), expr(std::move(e)), op(o) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
@@ -1173,6 +1163,10 @@ public:
             case Op::Plus: return e;
             case Op::Minus: return -e;
             case Op::LogicalNot: return !e.to_bool();
+            case Op::Expansion:
+            case Op::ExpansionDict:
+                throw std::runtime_error("Expansion operator is only supported in function calls and collections");
+                
         }
         throw std::runtime_error("Unknown unary operator");
     }
@@ -1248,13 +1242,50 @@ public:
         };
 
         if (l.is_callable()) {
-          return Value::callable([l, do_eval](const std::shared_ptr<Context> & context, Value::Arguments & args) {
+          return Value::callable([l, do_eval](const std::shared_ptr<Context> & context, ArgumentsValue & args) {
             auto ll = l.call(context, args);
             return do_eval(ll); //args[0].second);
           });
         } else {
           return do_eval(l);
         }
+    }
+};
+
+struct ArgumentsExpression {
+    std::vector<std::shared_ptr<Expression>> args;
+    std::vector<std::pair<std::string, std::shared_ptr<Expression>>> kwargs;
+
+    ArgumentsValue evaluate(const std::shared_ptr<Context> & context) const {
+        ArgumentsValue vargs;
+        for (const auto& arg : this->args) {
+            if (auto un_expr = std::dynamic_pointer_cast<UnaryOpExpr>(arg)) {
+                if (un_expr->op == UnaryOpExpr::Op::Expansion) {
+                    auto array = un_expr->expr->evaluate(context);
+                    if (!array.is_array()) {
+                        throw std::runtime_error("Expansion operator only supported on arrays");
+                    }
+                    array.for_each([&](Value & value) {
+                        vargs.args.push_back(value);
+                    });
+                    continue;
+                } else if (un_expr->op == UnaryOpExpr::Op::ExpansionDict) {
+                    auto dict = un_expr->expr->evaluate(context);
+                    if (!dict.is_object()) {
+                        throw std::runtime_error("ExpansionDict operator only supported on objects");
+                    }
+                    dict.for_each([&](const Value & key) {
+                        vargs.kwargs.push_back({key.get<std::string>(), dict.at(key)});
+                    });
+                    continue;
+                }
+            }
+            vargs.args.push_back(arg->evaluate(context));
+        }
+        for (const auto& [name, value] : this->kwargs) {
+            vargs.kwargs.push_back({name, value->evaluate(context)});
+        }
+        return vargs;
     }
 };
 
@@ -1282,64 +1313,64 @@ static std::string html_escape(const std::string & s) {
 class MethodCallExpr : public Expression {
     std::shared_ptr<Expression> object;
     std::shared_ptr<VariableExpr> method;
-    Expression::Arguments args;
+    ArgumentsExpression args;
 public:
-    MethodCallExpr(const Location & location, std::shared_ptr<Expression> && obj, std::shared_ptr<VariableExpr> && m, Expression::Arguments && a)
+    MethodCallExpr(const Location & location, std::shared_ptr<Expression> && obj, std::shared_ptr<VariableExpr> && m, ArgumentsExpression && a)
         : Expression(location), object(std::move(obj)), method(std::move(m)), args(std::move(a)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
         if (!object) throw std::runtime_error("MethodCallExpr.object is null");
         if (!method) throw std::runtime_error("MethodCallExpr.method is null");
         auto obj = object->evaluate(context);
+        auto vargs = args.evaluate(context);
         if (obj.is_null()) {
           throw std::runtime_error("Trying to call method '" + method->get_name() + "' on null");
         }
         if (obj.is_array()) {
           if (method->get_name() == "append") {
-              args.expectArgs("append method", {1, 1}, {0, 0});
-              obj.push_back(args.args[0]->evaluate(context));
+              vargs.expectArgs("append method", {1, 1}, {0, 0});
+              obj.push_back(vargs.args[0]);
               return Value();
           } else if (method->get_name() == "insert") {
-              args.expectArgs("insert method", {2, 2}, {0, 0});
-              auto index = args.args[0]->evaluate(context).get<int64_t>();
+              vargs.expectArgs("insert method", {2, 2}, {0, 0});
+              auto index = vargs.args[0].get<int64_t>();
               if (index < 0 || index > (int64_t) obj.size()) throw std::runtime_error("Index out of range for insert method");
-              obj.insert(index, args.args[1]->evaluate(context));
+              obj.insert(index, vargs.args[1]);
               return Value();
           }
         } else if (obj.is_object()) {
           if (method->get_name() == "items") {
-            args.expectArgs("items method", {0, 0}, {0, 0});
+            vargs.expectArgs("items method", {0, 0}, {0, 0});
             auto result = Value::array();
             for (const auto& key : obj.keys()) {
               result.push_back(Value::array({key, obj.at(key)}));
             }
             return result;
           } else if (method->get_name() == "get") {
-            args.expectArgs("get method", {1, 2}, {0, 0});
-            auto key = args.args[0]->evaluate(context);
-            if (args.args.size() == 1) {
+            vargs.expectArgs("get method", {1, 2}, {0, 0});
+            auto key = vargs.args[0];
+            if (vargs.args.size() == 1) {
               return obj.contains(key) ? obj.at(key) : Value();
             } else {
-              return obj.contains(key) ? obj.at(key) : args.args[1]->evaluate(context);
+              return obj.contains(key) ? obj.at(key) : vargs.args[1];
             }
           } else if (obj.contains(method->get_name())) {
             auto callable = obj.at(method->get_name());
             if (!callable.is_callable()) {
               throw std::runtime_error("Property '" + method->get_name() + "' is not callable");
             }
-            Value::Arguments vargs = args.evaluate(context);
             return callable.call(context, vargs);
           }
         } else if (obj.is_string()) {
           auto str = obj.get<std::string>();
           if (method->get_name() == "strip") {
-            args.expectArgs("strip method", {0, 0}, {0, 0});
+            vargs.expectArgs("strip method", {0, 0}, {0, 0});
             return Value(strip(str));
           } else if (method->get_name() == "endswith") {
-            args.expectArgs("endswith method", {1, 1}, {0, 0});
-            auto suffix = args.args[0]->evaluate(context).get<std::string>();
+            vargs.expectArgs("endswith method", {1, 1}, {0, 0});
+            auto suffix = vargs.args[0].get<std::string>();
             return suffix.length() <= str.length() && std::equal(suffix.rbegin(), suffix.rend(), str.rbegin());
           } else if (method->get_name() == "title") {
-            args.expectArgs("title method", {0, 0}, {0, 0});
+            vargs.expectArgs("title method", {0, 0}, {0, 0});
             auto res = str;
             for (size_t i = 0, n = res.size(); i < n; ++i) {
               if (i == 0 || std::isspace(res[i - 1])) res[i] = std::toupper(res[i]);
@@ -1355,8 +1386,8 @@ public:
 class CallExpr : public Expression {
 public:
     std::shared_ptr<Expression> object;
-    Expression::Arguments args;
-    CallExpr(const Location & location, std::shared_ptr<Expression> && obj, Expression::Arguments && a)
+    ArgumentsExpression args;
+    CallExpr(const Location & location, std::shared_ptr<Expression> && obj, ArgumentsExpression && a)
         : Expression(location), object(std::move(obj)), args(std::move(a)) {}
     Value do_evaluate(const std::shared_ptr<Context> & context) const override {
         if (!object) throw std::runtime_error("CallExpr.object is null");
@@ -1385,12 +1416,12 @@ public:
           } else {
             if (auto ce = dynamic_cast<CallExpr*>(part.get())) {
               auto target = ce->object->evaluate(context);
-              Value::Arguments args = ce->args.evaluate(context);
+              ArgumentsValue args = ce->args.evaluate(context);
               args.args.insert(args.args.begin(), result);
               result = target.call(context, args);
             } else {
               auto callable = part->evaluate(context);
-              Value::Arguments args;
+              ArgumentsValue args;
               args.args.insert(args.args.begin(), result);
               result = callable.call(context, args);
             }
@@ -1731,11 +1762,11 @@ private:
         throw std::runtime_error("Expected closing parenthesis in call args");
     }
 
-    Expression::Arguments parseCallArgs() {
+    ArgumentsExpression parseCallArgs() {
         consumeSpaces();
         if (consumeToken("(").empty()) throw std::runtime_error("Expected opening parenthesis in call args");
 
-        Expression::Arguments result;
+        ArgumentsExpression result;
 
         while (it != end) {
             if (!consumeToken(")").empty()) {
@@ -1846,21 +1877,30 @@ private:
         return left;
     }
 
-    std::shared_ptr<Expression> call_func(const std::string & name, Expression::Arguments && args) const {
+    std::shared_ptr<Expression> call_func(const std::string & name, ArgumentsExpression && args) const {
         return std::make_shared<CallExpr>(get_location(), std::make_shared<VariableExpr>(get_location(), name), std::move(args));
     }
 
     std::shared_ptr<Expression> parseMathUnaryPlusMinus() {
         static std::regex unary_plus_minus_tok(R"(\+|-(?![}%#]\}))");
         auto op_str = consumeToken(unary_plus_minus_tok);
-        auto expr = parseValueExpression();
-        if (!expr) throw std::runtime_error("Expected expr of 'unary plus/minus' expression");
+        auto expr = parseExpansion();
+        if (!expr) throw std::runtime_error("Expected expr of 'unary plus/minus/expansion' expression");
 
         if (!op_str.empty()) {
             auto op = op_str == "+" ? UnaryOpExpr::Op::Plus : UnaryOpExpr::Op::Minus;
             return std::make_shared<UnaryOpExpr>(get_location(), std::move(expr), op);
         }
         return expr;
+    }
+
+    std::shared_ptr<Expression> parseExpansion() {
+      static std::regex expansion_tok(R"(\*\*?)");
+      auto op_str = consumeToken(expansion_tok);
+      auto expr = parseValueExpression();
+      if (op_str.empty()) return expr;
+      if (!expr) throw std::runtime_error("Expected expr of 'expansion' expression");
+      return std::make_shared<UnaryOpExpr>(get_location(), std::move(expr), op_str == "*" ? UnaryOpExpr::Op::Expansion : UnaryOpExpr::Op::ExpansionDict);
     }
 
     std::shared_ptr<Expression> parseValueExpression() {
@@ -2330,7 +2370,7 @@ static Value simple_function(const std::string & fn_name, const std::vector<std:
   std::map<std::string, size_t> named_positions;
   for (size_t i = 0, n = params.size(); i < n; i++) named_positions[params[i]] = i;
 
-  return Value::callable([=](const std::shared_ptr<Context> & context, Value::Arguments & args) -> Value {
+  return Value::callable([=](const std::shared_ptr<Context> & context, ArgumentsValue & args) -> Value {
     auto args_obj = Value::object();
     std::vector<bool> provided_args(params.size());
     for (size_t i = 0, n = args.args.size(); i < n; i++) {
@@ -2398,7 +2438,7 @@ inline std::shared_ptr<Context> Context::builtins() {
     std::transform(str.begin(), str.end(), std::back_inserter(res), ::tolower);
     return Value(res);
   }));
-  globals.set("default", Value::callable([=](const std::shared_ptr<Context> &, Value::Arguments & args) {
+  globals.set("default", Value::callable([=](const std::shared_ptr<Context> &, ArgumentsValue & args) {
     args.expectArgs("default", {2, 3}, {0, 1});
     auto & value = args.args[0];
     auto & default_value = args.args[1];
@@ -2467,7 +2507,7 @@ inline std::shared_ptr<Context> Context::builtins() {
       });
     }
   }));
-  globals.set("namespace", Value::callable([=](const std::shared_ptr<Context> &, Value::Arguments & args) {
+  globals.set("namespace", Value::callable([=](const std::shared_ptr<Context> &, ArgumentsValue & args) {
     auto ns = Value::object();
     args.expectArgs("namespace", {0, 0}, {0, std::numeric_limits<size_t>::max()});
     for (auto & [name, value] : args.kwargs) {
@@ -2488,8 +2528,10 @@ inline std::shared_ptr<Context> Context::builtins() {
       return args.at("value");
   }));
   globals.set("string", simple_function("string", { "value" }, [](const std::shared_ptr<Context> &, Value & args) -> Value {
-      auto & items = args.at("value");
-      return items.to_str();
+      return args.at("value").to_str();
+  }));
+  globals.set("int", simple_function("int", { "value" }, [](const std::shared_ptr<Context> &, Value & args) -> Value {
+      return args.at("value").to_int();
   }));
   globals.set("list", simple_function("list", { "items" }, [](const std::shared_ptr<Context> &, Value & args) -> Value {
       auto & items = args.at("items");
@@ -2512,7 +2554,7 @@ inline std::shared_ptr<Context> Context::builtins() {
   auto make_filter = [](const Value & filter, Value & extra_args) -> Value {
     return simple_function("", { "value" }, [=](const std::shared_ptr<Context> & context, Value & args) {
       auto & value = args.at("value");
-      Value::Arguments actual_args;
+      ArgumentsValue actual_args;
       actual_args.args.emplace_back(value);
       for (size_t i = 0, n = extra_args.size(); i < n; i++) {
         actual_args.args.emplace_back(extra_args.at(i));
@@ -2521,7 +2563,7 @@ inline std::shared_ptr<Context> Context::builtins() {
     });
   };
   // https://jinja.palletsprojects.com/en/3.0.x/templates/#jinja-filters.reject
-  globals.set("reject", Value::callable([=](const std::shared_ptr<Context> & context, Value::Arguments & args) {
+  globals.set("reject", Value::callable([=](const std::shared_ptr<Context> & context, ArgumentsValue & args) {
     args.expectArgs("reject", {2, std::numeric_limits<size_t>::max()}, {0, 0});
     auto & items = args.args[0];
     auto filter_fn = context->get(args.args[1]);
@@ -2536,7 +2578,7 @@ inline std::shared_ptr<Context> Context::builtins() {
     auto res = Value::array();
     for (size_t i = 0, n = items.size(); i < n; i++) {
       auto & item = items.at(i);
-      Value::Arguments filter_args;
+      ArgumentsValue filter_args;
       filter_args.args.emplace_back(item);
       auto pred_res = filter.call(context, filter_args);
       if (!pred_res.to_bool()) {
@@ -2545,7 +2587,7 @@ inline std::shared_ptr<Context> Context::builtins() {
     }
     return res;
   }));
-  globals.set("map", Value::callable([=](const std::shared_ptr<Context> & context, Value::Arguments & args) {
+  globals.set("map", Value::callable([=](const std::shared_ptr<Context> & context, ArgumentsValue & args) {
     auto res = Value::array();
     if (args.args.size() == 1 &&
       ((args.has_named("attribute") && args.kwargs.size() == 1) || (args.has_named("default") && args.kwargs.size() == 2))) {
@@ -2560,7 +2602,7 @@ inline std::shared_ptr<Context> Context::builtins() {
     } else if (args.kwargs.empty() && args.args.size() >= 2) {
       auto fn = context->get(args.args[1]);
       if (fn.is_null()) throw std::runtime_error("Undefined filter: " + args.args[1].dump());
-      Value::Arguments filter_args { {Value()}, {} };
+      ArgumentsValue filter_args { {Value()}, {} };
       for (size_t i = 2, n = args.args.size(); i < n; i++) {
         filter_args.args.emplace_back(args.args[i]);
       }
@@ -2592,7 +2634,7 @@ inline std::shared_ptr<Context> Context::builtins() {
     if (!text.empty() && text.back() == '\n') out += "\n";
     return out;
   }));
-  globals.set("selectattr", Value::callable([=](const std::shared_ptr<Context> & context, Value::Arguments & args) {
+  globals.set("selectattr", Value::callable([=](const std::shared_ptr<Context> & context, ArgumentsValue & args) {
     args.expectArgs("selectattr", {2, std::numeric_limits<size_t>::max()}, {0, 0});
     auto & items = args.args[0];
     if (items.is_null())
@@ -2601,7 +2643,7 @@ inline std::shared_ptr<Context> Context::builtins() {
 
     bool has_test = false;
     Value test_fn;
-    Value::Arguments test_args {{Value()}, {}};
+    ArgumentsValue test_args {{Value()}, {}};
     if (args.args.size() >= 3) {
       has_test = true;
       test_fn = context->get(args.args[2]);
@@ -2627,7 +2669,7 @@ inline std::shared_ptr<Context> Context::builtins() {
     }
     return res;
   }));
-  globals.set("range", Value::callable([=](const std::shared_ptr<Context> &, Value::Arguments & args) {
+  globals.set("range", Value::callable([=](const std::shared_ptr<Context> &, ArgumentsValue & args) {
     std::vector<int64_t> startEndStep(3);
     std::vector<bool> param_set(3);
     if (args.args.size() == 1) {
