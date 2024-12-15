@@ -64,6 +64,10 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config ${{ matrix.type }} --parallel
 
+      - name: Test expectations against jinja2
+        env:
+          USE_JINJA2: 1
+        run: ctest -K SyntaxTest --test-dir build --output-on-failure --verbose -C ${{ matrix.type }}
+
       - name: Test
-        working-directory: ${{github.workspace}}/build
-        run: ctest --test-dir tests --output-on-failure --verbose -C ${{ matrix.type }}
+        run: ctest --test-dir build --output-on-failure --verbose -C ${{ matrix.type }}
