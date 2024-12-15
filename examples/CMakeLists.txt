@@ -11,6 +11,7 @@ foreach(example
 )
     add_executable(${example} ${example}.cpp)
     set_target_properties(${example} PROPERTIES CXX_STANDARD 11)
+    target_compile_features(${example} PUBLIC cxx_std_17)
     target_link_libraries(${example} PRIVATE nlohmann_json::nlohmann_json)
 
 endforeach()

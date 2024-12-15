@@ -2077,7 +2077,7 @@ private:
       static std::regex expr_open_regex(R"(\{\{([-~])?)");
       static std::regex block_open_regex(R"(^\{%([-~])?[\s\n\r]*)");
       static std::regex block_keyword_tok(R"((if|else|elif|endif|for|endfor|set|endset|block|endblock|macro|endmacro|filter|endfilter)\b)");
-      static std::regex text_regex(R"([\s\S\n\r]*?($|(?=\{\{|\{%|\{#)))");
+      static std::regex text_regex(R"([\s\S\r\n]*?($|(?=\{\{|\{%|\{#)))", std::regex::multiline);
       static std::regex expr_close_regex(R"([\s\n\r]*([-~])?\}\})");
       static std::regex block_close_regex(R"([\s\n\r]*([-~])?%\})");
 
@@ -2333,12 +2333,12 @@ private:
 public:
 
     static std::shared_ptr<TemplateNode> parse(const std::string& template_str, const Options & options) {
-#ifdef __WIN32
-        static std::regex cr_regex("\\r");
-        Parser parser(std::make_shared<std::string>(std::regex_replace(template_str, cr_regex, "")), options);
-#else
+// #ifdef __WIN32
+//         static std::regex cr_regex("\\r");
+//         Parser parser(std::make_shared<std::string>(std::regex_replace(template_str, cr_regex, "")), options);
+// #else
         Parser parser(std::make_shared<std::string>(template_str), options);
-#endif
+// #endif
         auto tokens = parser.tokenize();
         TemplateTokenIterator begin = tokens.begin();
         auto it = begin;
