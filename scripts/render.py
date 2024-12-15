@@ -7,16 +7,15 @@
 # SPDX-License-Identifier: MIT
 import sys
 import json
-import jinja2
+from jinja2 import Environment
 import jinja2.ext
+from pathlib import Path
 
-data = json.loads(sys.stdin.read())
+input_file, output_file = sys.argv[1:3]
+data = json.loads(Path(input_file).read_text())
 # print(json.dumps(data, indent=2), file=sys.stderr)
 
-print(jinja2.Environment(
-    trim_blocks=data.get('trim_blocks', False),
-    lstrip_blocks=data.get('lstrip_blocks', False),
-    keep_trailing_newline=data.get('keep_trailing_newline', False),
-    undefined=jinja2.DebugUndefined,
-    extensions=[jinja2.ext.loopcontrols]
-).from_string(data['template']).render(data['bindings'] or {}), end='')
+env = Environment(**data['options'], extensions=[jinja2.ext.loopcontrols])
+tmpl = env.from_string(data['template'])
+output = tmpl.render(data['bindings'])
+Path(output_file).write_text(output)

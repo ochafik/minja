@@ -17,7 +17,7 @@
 static std::string render_python(const std::string & template_str, const json & bindings, const minja::Options & options) {
     json data {
         {"template", template_str},
-        {"bindings", bindings},
+        {"bindings", bindings.is_null() ? json::object() : bindings},
         {"options", {
             {"trim_blocks", options.trim_blocks},
             {"lstrip_blocks", options.lstrip_blocks},
@@ -29,7 +29,9 @@ static std::string render_python(const std::string & template_str, const json & 
         of << data.dump(2);
         of.close();
     }
-    auto res = std::system("python3 -m scripts.render < data.json > out.txt");
+
+    std::remove("out.txt");
+    auto res = std::system("python3 -m scripts.render data.json out.txt");
     if (res != 0) {
         throw std::runtime_error("Failed to run python script with data: " + data.dump(2));
     }
@@ -78,6 +80,10 @@ TEST(SyntaxTest, SimpleCases) {
     // EXPECT_EQ(
     //     "\r\nhey\r\nho!",
     //     render("\r\n{{ 'hey\r\nho!' }}\r\n", {}, {}));
+    EXPECT_EQ("\n", render("    {% if True %}\n    {% endif %}", {}, lstrip_blocks));
+    EXPECT_EQ("", render("    {% if True %}\n    {% endif %}", {}, lstrip_trim_blocks));
+    EXPECT_EQ("        ", render("    {% if True %}\n    {% endif %}", {}, trim_blocks));
+
     EXPECT_EQ(
         "[2, 3]",
         render("{{ range(*[2,4]) | list }}", {}, {}));
@@ -193,10 +199,10 @@ TEST(SyntaxTest, SimpleCases) {
         "\n  Hello  \n...\n",
         render(trim_tmpl, {}, {}));
     EXPECT_EQ(
-        "\n  Hello  \n...\n",
+        "\nHello  \n...\n",
         render(trim_tmpl, {}, lstrip_blocks));
     EXPECT_EQ(
-        "\n  Hello  \n...\n",
+        "\nHello  \n...\n",
         render(trim_tmpl, {}, lstrip_trim_blocks));
     EXPECT_EQ(
         "a | b | c",
@@ -279,17 +285,17 @@ TEST(SyntaxTest, SimpleCases) {
             {%- endfor -%}
         )", {}, {}));
     if (!getenv("USE_JINJA2"))
-    EXPECT_EQ(
-        "0, first=True, last=False, index=1, index0=0, revindex=3, revindex0=2, prev=, next=2,\n"
-        "2, first=False, last=False, index=2, index0=1, revindex=2, revindex0=1, prev=0, next=4,\n"
-        "4, first=False, last=True, index=3, index0=2, revindex=1, revindex0=0, prev=2, next=,\n",
-        render(
-            "{%- for i in range(5) if i % 2 == 0 -%}\n"
-            "{{ i }}, first={{ loop.first }}, last={{ loop.last }}, index={{ loop.index }}, index0={{ loop.index0 }}, revindex={{ loop.revindex }}, revindex0={{ loop.revindex0 }}, prev={{ loop.previtem }}, next={{ loop.nextitem }},\n"
-            "{% endfor -%}",
-            {}, {}
-        )
-    );
+        EXPECT_EQ(
+            "0, first=True, last=False, index=1, index0=0, revindex=3, revindex0=2, prev=, next=2,\n"
+            "2, first=False, last=False, index=2, index0=1, revindex=2, revindex0=1, prev=0, next=4,\n"
+            "4, first=False, last=True, index=3, index0=2, revindex=1, revindex0=0, prev=2, next=,\n",
+            render(
+                "{%- for i in range(5) if i % 2 == 0 -%}\n"
+                "{{ i }}, first={{ loop.first }}, last={{ loop.last }}, index={{ loop.index }}, index0={{ loop.index0 }}, revindex={{ loop.revindex }}, revindex0={{ loop.revindex0 }}, prev={{ loop.previtem }}, next={{ loop.nextitem }},\n"
+                "{% endfor -%}",
+                {}, {}
+            )
+        );
     EXPECT_EQ(
         R"(&lt;, &gt;, &amp;, &#34;)",
         render(R"(
@@ -328,9 +334,14 @@ TEST(SyntaxTest, SimpleCases) {
                 {{- values -}}
             {%- endmacro -%}
             {{- foo() }} {{ foo() -}})", {}, {}));
+    
+    if (!getenv("USE_JINJA2"))
+        EXPECT_EQ(
+            "[]",
+            render(R"({{ None | items | list | tojson }})", {}, {}));
     EXPECT_EQ(
-        "[]; [[1, 2]]",
-        render(R"({{ None | items | list | tojson }}; {{ {1: 2} | items | list | tojson }})", {}, {}));
+        "[[1, 2]]",
+        render(R"({{ {1: 2} | items | list | tojson }})", {}, {}));
     EXPECT_EQ(
         "[[1, 2], [3, 4], [5, 7]]",
         render(R"({{ {1: 2, 3: 4, 5: 7} | dictsort | tojson }})", {}, {}));
