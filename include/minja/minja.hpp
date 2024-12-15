@@ -2077,13 +2077,14 @@ private:
       static std::regex expr_open_regex(R"(\{\{([-~])?)");
       static std::regex block_open_regex(R"(^\{%([-~])?[\s\n\r]*)");
       static std::regex block_keyword_tok(R"((if|else|elif|endif|for|endfor|set|endset|block|endblock|macro|endmacro|filter|endfilter)\b)");
-      static std::regex text_regex(R"([\s\S\r\n]*?($|(?=\{\{|\{%|\{#)))", std::regex::multiline);
+      static std::regex non_text_open_regex(R"(\{\{|\{%|\{#)");
       static std::regex expr_close_regex(R"([\s\n\r]*([-~])?\}\})");
       static std::regex block_close_regex(R"([\s\n\r]*([-~])?%\})");
 
       TemplateTokenVector tokens;
       std::vector<std::string> group;
       std::string text;
+      std::smatch match;
 
       try {
         while (it != end) {
@@ -2204,10 +2205,15 @@ private:
             } else {
               throw std::runtime_error("Unexpected block: " + keyword);
             }
-          } else if (!(text = consumeToken(text_regex, SpaceHandling::Keep)).empty()) {
+          } else if (std::regex_search(it, end, match, non_text_open_regex)) {
+            auto text_end = it + match.position();
+            text = std::string(it, text_end);
+            it = text_end;
             tokens.push_back(nonstd_make_unique<TextTemplateToken>(location, SpaceHandling::Keep, SpaceHandling::Keep, text));
           } else {
-            if (it != end) throw std::runtime_error("Unexpected character");
+            text = std::string(it, end);
+            it = end;
+            tokens.push_back(nonstd_make_unique<TextTemplateToken>(location, SpaceHandling::Keep, SpaceHandling::Keep, text));
           }
         }
         return tokens;
