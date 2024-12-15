@@ -32,6 +32,16 @@ typename std::unique_ptr<T> nonstd_make_unique(Args &&...args) {
   return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
+
+static std::string normalize_newlines(const std::string & s) {
+#ifdef _WIN32
+  static const std::regex nl_regex("\r\n");
+  return std::regex_replace(s, nl_regex, "\n");
+#else
+  return s;
+#endif
+}
+
 namespace minja {
 
 class Context;
@@ -808,7 +818,7 @@ public:
     std::string render(const std::shared_ptr<Context> & context) const {
         std::ostringstream out;
         render(out, context);
-        return out.str();
+        return normalize_newlines(out.str());
     }
 };
 
@@ -1277,6 +1287,10 @@ public:
 static std::string strip(const std::string & s) {
   static std::regex trailing_spaces_regex("^\\s+|\\s+$");
   return std::regex_replace(s, trailing_spaces_regex, "");
+  // auto start = s.find_first_not_of(" \t\n\r");
+  // if (start == std::string::npos) return "";
+  // auto end = s.find_last_not_of(" \t\n\r");
+  // return s.substr(start, end - start + 1);
 }
 
 static std::string html_escape(const std::string & s) {
@@ -2272,14 +2286,28 @@ private:
               if (post_space == SpaceHandling::Strip) {
                 static std::regex trailing_space_regex(R"((\s|\r|\n)+$)");
                 text = std::regex_replace(text, trailing_space_regex, "");
+                // auto last = text.find_last_not_of(" \t\r\n");
+                // if (last != std::string::npos) text.erase(last + 1);
               } else if (options.lstrip_blocks && it != end) {
                 static std::regex trailing_last_line_space_regex(R"((\r?\n)[ \t]*$)");
                 text = std::regex_replace(text, trailing_last_line_space_regex, "$1");
+                // auto i = text.size();
+                // while (i > 0 && (text[i - 1] == ' ' || text[i - 1] == '\t')) i--;
+                // if (i > 0 && text[i - 1] == '\n') {
+                //   i--;
+                //   if (i > 0 && text[i - 1] == '\r') i--;
+                //   text.resize(i);
+                // }
               }
-
               if (it == end && !options.keep_trailing_newline) {
-                static std::regex r(R"(\r?\n$)");
-                text = std::regex_replace(text, r, "");  // Strip one trailing newline
+                // static std::regex r(R"(\r?\n$)");
+                // text = std::regex_replace(text, r, "");  // Strip one trailing newline
+                auto i = text.size();
+                if (i > 0 && text[i - 1] == '\n') {
+                  i--;
+                  if (i > 0 && text[i - 1] == '\r') i--;
+                  text.resize(i);
+                }
               }
               children.emplace_back(std::make_shared<TextNode>(token->location, text));
           } else if (auto expr_token = dynamic_cast<ExpressionTemplateToken*>(token.get())) {
@@ -2339,12 +2367,7 @@ private:
 public:
 
     static std::shared_ptr<TemplateNode> parse(const std::string& template_str, const Options & options) {
-// #ifdef __WIN32
-//         static std::regex cr_regex("\\r");
-//         Parser parser(std::make_shared<std::string>(std::regex_replace(template_str, cr_regex, "")), options);
-// #else
-        Parser parser(std::make_shared<std::string>(template_str), options);
-// #endif
+        Parser parser(std::make_shared<std::string>(normalize_newlines(template_str)), options);
         auto tokens = parser.tokenize();
         TemplateTokenIterator begin = tokens.begin();
         auto it = begin;
