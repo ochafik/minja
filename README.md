@@ -17,7 +17,7 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
   - See `MODEL_IDS` in [tests/CMakeLists.txt](./tests/CMakeLists.txt) for the list of models currently supported
 - Easy to integrate to/with projects such as [llama.cpp](https://github.com/ggerganov/llama.cpp) or [gemma.cpp](https://github.com/google/gemma.cpp):
   - Header-only
-  - C++11
+  - C++17
   - Only depend on [nlohmann::json](https://github.com/nlohmann/json) (no Boost)
   - Keep codebase small (currently 2.5k LoC) and easy to understand
 - *Decent* performance compared to Python.

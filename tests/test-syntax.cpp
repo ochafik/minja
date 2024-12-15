@@ -47,6 +47,12 @@ TEST(SyntaxTest, SimpleCases) {
         "\r\nhey\r\nho!",
         render("\r\n{{ 'hey\r\nho!' }}\r\n", {}, {}));
     EXPECT_EQ(
+        "[2, 3]",
+        render("{{ range(*[2,4]) | list }}", {}, {}));
+    EXPECT_EQ(
+        "1, 0, 10, -10, 10, -10, 0, 0, 2, 0, 0, ",
+        render("{% for i in [true, false, 10, -10, 10.1, -10.1, None, 'a', '2', {}, [1]] %}{{ i | int }}, {% endfor %}", {}, {}));
+    EXPECT_EQ(
         "abc",
         render("{% filter trim %} abc {% endfilter %}", {}, {}));
     EXPECT_EQ(
