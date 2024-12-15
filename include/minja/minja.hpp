@@ -1321,7 +1321,7 @@ static std::string html_escape(const std::string & s) {
       case '&': result += "&amp;"; break;
       case '<': result += "&lt;"; break;
       case '>': result += "&gt;"; break;
-      case '"': result += "&quot;"; break;
+      case '"': result += "&#34;"; break;
       case '\'': result += "&apos;"; break;
       default: result += c; break;
     }
