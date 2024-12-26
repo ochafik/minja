@@ -80,9 +80,31 @@ TEST(SyntaxTest, SimpleCases) {
     // EXPECT_EQ(
     //     "\r\nhey\r\nho!",
     //     render("\r\n{{ 'hey\r\nho!' }}\r\n", {}, {}));
-    EXPECT_EQ("\n", render("    {% if True %}\n    {% endif %}", {}, lstrip_blocks));
-    EXPECT_EQ("", render("    {% if True %}\n    {% endif %}", {}, lstrip_trim_blocks));
+    EXPECT_EQ(
+        "    b",
+        render(R"(  {% set _ = 1 %}    {% set _ = 2 %}b)", {}, lstrip_trim_blocks));
+    EXPECT_EQ(
+        "        1",
+        render(R"({%- if True %}        {% set _ = x %}{%- endif %}{{ 1 }})", {}, lstrip_trim_blocks));
+
+    EXPECT_EQ("\n",       render("    {% if True %}\n    {% endif %}", {}, lstrip_blocks));
+    EXPECT_EQ("",         render("    {% if True %}\n    {% endif %}", {}, lstrip_trim_blocks));
     EXPECT_EQ("        ", render("    {% if True %}\n    {% endif %}", {}, trim_blocks));
+    
+    EXPECT_EQ("      ", render("  {% set _ = 1 %}    ", {}, {}));
+    EXPECT_EQ("    ",   render("  {% set _ = 1 %}    ", {}, lstrip_blocks));
+    EXPECT_EQ("      ", render("  {% set _ = 1 %}    ", {}, trim_blocks));
+    EXPECT_EQ("    ",   render("  {% set _ = 1 %}    ", {}, lstrip_trim_blocks));
+    
+    EXPECT_EQ("  \n            \n                ", render("  \n    {% set _ = 1 %}        \n                ", {}, {}));
+    EXPECT_EQ("  \n        \n                ",     render("  \n    {% set _ = 1 %}        \n                ", {}, lstrip_blocks));
+    EXPECT_EQ("  \n            \n                ", render("  \n    {% set _ = 1 %}        \n                ", {}, trim_blocks));
+    EXPECT_EQ("  \n        \n                ",     render("  \n    {% set _ = 1 %}        \n                ", {}, lstrip_trim_blocks));
+
+    EXPECT_EQ("\n  ", render("{% set _ = 1 %}\n  ", {}, {}));
+    EXPECT_EQ("\n  ", render("{% set _ = 1 %}\n  ", {}, lstrip_blocks));
+    EXPECT_EQ("  ",   render("{% set _ = 1 %}\n  ", {}, trim_blocks));
+    EXPECT_EQ("  ",   render("{% set _ = 1 %}\n  ", {}, lstrip_trim_blocks));
 
     EXPECT_EQ(
         "[2, 3]",

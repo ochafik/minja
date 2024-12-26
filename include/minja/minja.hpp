@@ -2305,32 +2305,25 @@ private:
               SpaceHandling post_space = it != end ? (*it)->pre_space : SpaceHandling::Keep;
 
               auto text = text_token->text;
+              if (post_space == SpaceHandling::Strip) {
+                static std::regex trailing_space_regex(R"((\s|\r|\n)+$)");
+                text = std::regex_replace(text, trailing_space_regex, "");
+              } else if (options.lstrip_blocks && it != end) {
+                auto i = text.size();
+                while (i > 0 && (text[i - 1] == ' ' || text[i - 1] == '\t')) i--;
+                if ((i == 0 && (it - 1) == begin) || (i > 0 && text[i - 1] == '\n')) {
+                  text.resize(i);
+                }
+              }
               if (pre_space == SpaceHandling::Strip) {
                 static std::regex leading_space_regex(R"(^(\s|\r|\n)+)");
                 text = std::regex_replace(text, leading_space_regex, "");
               } else if (options.trim_blocks && (it - 1) != begin && !dynamic_cast<ExpressionTemplateToken*>((*(it - 2)).get())) {
-                static std::regex leading_line(R"(^[ \t]*\r?\n)");
-                text = std::regex_replace(text, leading_line, "");
-              }
-              if (post_space == SpaceHandling::Strip) {
-                static std::regex trailing_space_regex(R"((\s|\r|\n)+$)");
-                text = std::regex_replace(text, trailing_space_regex, "");
-                // auto last = text.find_last_not_of(" \t\r\n");
-                // if (last != std::string::npos) text.erase(last + 1);
-              } else if (options.lstrip_blocks && it != end) {
-                static std::regex trailing_last_line_space_regex(R"((\r?\n)[ \t]*$)");
-                text = std::regex_replace(text, trailing_last_line_space_regex, "$1");
-                // auto i = text.size();
-                // while (i > 0 && (text[i - 1] == ' ' || text[i - 1] == '\t')) i--;
-                // if (i > 0 && text[i - 1] == '\n') {
-                //   i--;
-                //   if (i > 0 && text[i - 1] == '\r') i--;
-                //   text.resize(i);
-                // }
+                if (text.length() > 0 && text[0] == '\n') {
+                  text.erase(0, 1);
+                }
               }
               if (it == end && !options.keep_trailing_newline) {
-                // static std::regex r(R"(\r?\n$)");
-                // text = std::regex_replace(text, r, "");  // Strip one trailing newline
                 auto i = text.size();
                 if (i > 0 && text[i - 1] == '\n') {
                   i--;
