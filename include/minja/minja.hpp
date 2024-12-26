@@ -1229,8 +1229,8 @@ public:
             if (!l.to_bool()) return Value(false);
             return right->evaluate(context).to_bool();
           } else if (op == Op::Or) {
-            if (l.to_bool()) return Value(true);
-            return right->evaluate(context).to_bool();
+            if (l.to_bool()) return l;
+            return right->evaluate(context);
           }
 
           auto r = right->evaluate(context);
