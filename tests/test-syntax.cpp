@@ -30,8 +30,11 @@ static std::string render_python(const std::string & template_str, const json & 
         of.close();
     }
 
+    auto pyExeEnv = getenv("PYTHON_EXECUTABLE");
+    std::string pyExe = pyExeEnv ? pyExeEnv : "python3";
+
     std::remove("out.txt");
-    auto res = std::system("python3 -m scripts.render data.json out.txt");
+    auto res = std::system((pyExe + " -m scripts.render data.json out.txt").c_str());
     if (res != 0) {
         throw std::runtime_error("Failed to run python script with data: " + data.dump(2));
     }
