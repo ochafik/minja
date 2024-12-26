@@ -309,7 +309,7 @@ TEST(SyntaxTest, SimpleCases) {
                 ({{ i }}, {{ loop.cycle('odd', 'even') }}),
             {%- endfor -%}
         )", {}, {}));
-    if (!getenv("USE_JINJA2"))
+    if (!getenv("USE_JINJA2")) {
         EXPECT_EQ(
             "0, first=True, last=False, index=1, index0=0, revindex=3, revindex0=2, prev=, next=2,\n"
             "2, first=False, last=False, index=2, index0=1, revindex=2, revindex0=1, prev=0, next=4,\n"
@@ -321,6 +321,7 @@ TEST(SyntaxTest, SimpleCases) {
                 {}, {}
             )
         );
+    }
     EXPECT_EQ(
         R"(&lt;, &gt;, &amp;, &#34;)",
         render(R"(
