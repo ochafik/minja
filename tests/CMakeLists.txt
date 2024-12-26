@@ -74,14 +74,20 @@ set(MODEL_IDS
     TheBloke/FusionNet_34Bx2_MoE-AWQ
 
     # Broken, TODO:
-    # fireworks-ai/llama-3-firefunction-v2 
+    # fireworks-ai/llama-3-firefunction-v2 # https://github.com/google/minja/issues/7
+    # ai21labs/AI21-Jamba-1.5-Large # https://github.com/google/minja/issues/8
 
     # Can't find template(s), TODO:
-    # ai21labs/Jamba-v0.1
     # apple/OpenELM-1_1B-Instruct 
     # dreamgen/WizardLM-2-7B
     # xai-org/grok-1
 )
+
+if(WIN32)
+    list(REMOVE_ITEM MODEL_IDS
+        bofenghuang/vigogne-2-70b-chat
+    )
+endif()
 
 # Create one test case for each {template, context} combination
 file(GLOB CONTEXT_FILES "${CMAKE_SOURCE_DIR}/tests/contexts/*.json")
