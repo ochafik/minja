@@ -15,6 +15,11 @@ target_link_libraries(test-syntax PRIVATE
 )
 gtest_discover_tests(test-syntax)
 
+# Add test target that runs with USE_JINJA2=1
+add_test(NAME test-syntax-jinja2 COMMAND test-syntax)
+set_tests_properties(test-syntax-jinja2 PROPERTIES ENVIRONMENT "USE_JINJA2=1")
+
+
 add_executable(test-chat-template test-chat-template.cpp)
 target_compile_features(test-chat-template PUBLIC cxx_std_17)
 target_link_libraries(test-chat-template PRIVATE nlohmann_json::nlohmann_json)
