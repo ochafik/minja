@@ -26,15 +26,6 @@
 
 using json = nlohmann::ordered_json;
 
-static std::string normalize_newlines(const std::string & s) {
-#ifdef _WIN32
-  static const std::regex nl_regex("\r\n");
-  return std::regex_replace(s, nl_regex, "\n");
-#else
-  return s;
-#endif
-}
-
 namespace minja {
 
 class Context;
@@ -46,6 +37,15 @@ struct Options {
 };
 
 struct ArgumentsValue;
+
+static std::string normalize_newlines(const std::string & s) {
+#ifdef _WIN32
+  static const std::regex nl_regex("\r\n");
+  return std::regex_replace(s, nl_regex, "\n");
+#else
+  return s;
+#endif
+}
 
 /* Values that behave roughly like in Python. */
 class Value : public std::enable_shared_from_this<Value> {

@@ -41,7 +41,7 @@ static std::string read_file(const std::string &path) {
     std::string out;
     out.resize(static_cast<size_t>(size));
     fs.read(&out[0], static_cast<std::streamsize>(size));
-    return out;
+    return minja::normalize_newlines(out);
 }
 
 int main(int argc, char *argv[]) {
