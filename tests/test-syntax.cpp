@@ -360,10 +360,11 @@ TEST(SyntaxTest, SimpleCases) {
             {%- endmacro -%}
             {{- foo() }} {{ foo() -}})", {}, {}));
     
-    if (!getenv("USE_JINJA2"))
+    if (!getenv("USE_JINJA2")) {
         EXPECT_EQ(
             "[]",
             render(R"({{ None | items | list | tojson }})", {}, {}));
+    }
     EXPECT_EQ(
         "[[1, 2]]",
         render(R"({{ {1: 2} | items | list | tojson }})", {}, {}));
