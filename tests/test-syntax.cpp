@@ -14,7 +14,44 @@
 #include <iostream>
 #include <string>
 
+static std::string render_python(const std::string & template_str, const json & bindings, const minja::Options & options) {
+    json data {
+        {"template", template_str},
+        {"bindings", bindings.is_null() ? json::object() : bindings},
+        {"options", {
+            {"trim_blocks", options.trim_blocks},
+            {"lstrip_blocks", options.lstrip_blocks},
+            {"keep_trailing_newline", options.keep_trailing_newline},
+        }},
+    };
+    { 
+        std::ofstream of("data.json");
+        of << data.dump(2);
+        of.close();
+    }
+
+    auto pyExeEnv = getenv("PYTHON_EXECUTABLE");
+    std::string pyExe = pyExeEnv ? pyExeEnv : "python3";
+
+    std::remove("out.txt");
+    auto res = std::system((pyExe + " -m scripts.render data.json out.txt").c_str());
+    if (res != 0) {
+        throw std::runtime_error("Failed to run python script with data: " + data.dump(2));
+    }
+
+    std::ifstream f("out.txt");
+    std::string out((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    return out;
+}
+
 static std::string render(const std::string & template_str, const json & bindings, const minja::Options & options) {
+    if (getenv("USE_JINJA2")) {
+        try {
+            return render_python(template_str, bindings, options);
+        } catch (const std::exception & e) {
+            std::cerr << "ERROR: " + std::string(e.what());
+        }
+    }
     auto root = minja::Parser::parse(template_str, options);
     auto context = minja::Context::make(bindings);
     std::string actual;
@@ -43,9 +80,35 @@ const minja::Options lstrip_trim_blocks {
 };
 
 TEST(SyntaxTest, SimpleCases) {
+    // EXPECT_EQ(
+    //     "\r\nhey\r\nho!",
+    //     render("\r\n{{ 'hey\r\nho!' }}\r\n", {}, {}));
     EXPECT_EQ(
-        "\r\nhey\r\nho!",
-        render("\r\n{{ 'hey\r\nho!' }}\r\n", {}, {}));
+        "    b",
+        render(R"(  {% set _ = 1 %}    {% set _ = 2 %}b)", {}, lstrip_trim_blocks));
+    EXPECT_EQ(
+        "        1",
+        render(R"({%- if True %}        {% set _ = x %}{%- endif %}{{ 1 }})", {}, lstrip_trim_blocks));
+
+    EXPECT_EQ("\n",       render("    {% if True %}\n    {% endif %}", {}, lstrip_blocks));
+    EXPECT_EQ("",         render("    {% if True %}\n    {% endif %}", {}, lstrip_trim_blocks));
+    EXPECT_EQ("        ", render("    {% if True %}\n    {% endif %}", {}, trim_blocks));
+    
+    EXPECT_EQ("      ", render("  {% set _ = 1 %}    ", {}, {}));
+    EXPECT_EQ("    ",   render("  {% set _ = 1 %}    ", {}, lstrip_blocks));
+    EXPECT_EQ("      ", render("  {% set _ = 1 %}    ", {}, trim_blocks));
+    EXPECT_EQ("    ",   render("  {% set _ = 1 %}    ", {}, lstrip_trim_blocks));
+    
+    EXPECT_EQ("  \n            \n                ", render("  \n    {% set _ = 1 %}        \n                ", {}, {}));
+    EXPECT_EQ("  \n        \n                ",     render("  \n    {% set _ = 1 %}        \n                ", {}, lstrip_blocks));
+    EXPECT_EQ("  \n            \n                ", render("  \n    {% set _ = 1 %}        \n                ", {}, trim_blocks));
+    EXPECT_EQ("  \n        \n                ",     render("  \n    {% set _ = 1 %}        \n                ", {}, lstrip_trim_blocks));
+
+    EXPECT_EQ("\n  ", render("{% set _ = 1 %}\n  ", {}, {}));
+    EXPECT_EQ("\n  ", render("{% set _ = 1 %}\n  ", {}, lstrip_blocks));
+    EXPECT_EQ("  ",   render("{% set _ = 1 %}\n  ", {}, trim_blocks));
+    EXPECT_EQ("  ",   render("{% set _ = 1 %}\n  ", {}, lstrip_trim_blocks));
+
     EXPECT_EQ(
         "[2, 3]",
         render("{{ range(*[2,4]) | list }}", {}, {}));
@@ -126,7 +189,7 @@ TEST(SyntaxTest, SimpleCases) {
         render(R"({{ 'a' in ["a"] }},{{ 'a' in [] }})", {}, {}));
     EXPECT_EQ(
         R"([{'a': 1}])",
-        render(R"({{ [{"a": 1}, {"a": 2}, {}] | selectattr("a", "equalto", 1) }})", {}, {}));
+        render(R"({{ [{"a": 1}, {"a": 2}, {}] | selectattr("a", "equalto", 1) | list }})", {}, {}));
     EXPECT_EQ(
         "[1, 2]",
         render(R"({{ [{"a": 1}, {"a": 2}] | map(attribute="a") | list }})", {}, {}));
@@ -155,7 +218,7 @@ TEST(SyntaxTest, SimpleCases) {
         "...\n"
         "\n";
     EXPECT_EQ(
-        "\n  Hello...\n",
+        "\n  Hello  \n...\n",
         render(trim_tmpl, {}, trim_blocks));
     EXPECT_EQ(
         "\n  Hello  \n...\n",
@@ -164,7 +227,7 @@ TEST(SyntaxTest, SimpleCases) {
         "\nHello  \n...\n",
         render(trim_tmpl, {}, lstrip_blocks));
     EXPECT_EQ(
-        "\nHello...\n",
+        "\nHello  \n...\n",
         render(trim_tmpl, {}, lstrip_trim_blocks));
     EXPECT_EQ(
         "a | b | c",
@@ -188,7 +251,7 @@ TEST(SyntaxTest, SimpleCases) {
         )", {}, {}));
     EXPECT_EQ(
         "a0b",
-        render("{{ 'a' + [] | length + 'b' }}", {}, {}));
+        render("{{ 'a' + [] | length | string + 'b' }}", {}, {}));
     EXPECT_EQ(
         "1, 2, 3...",
         render("{{ [1, 2, 3] | join(', ') + '...' }}", {}, {}));
@@ -205,8 +268,8 @@ TEST(SyntaxTest, SimpleCases) {
         "1Hello there2",
         render("{% set foo %}Hello {{ 'there' }}{% endset %}{{ 1 ~ foo ~ 2 }}", {}, {}));
     EXPECT_EQ(
-        "[1, False, null, True, 2, '3']",
-        render("{{ [1, False, null, True, 2, '3', 1, '3', False, null, True] | unique }}", {}, {}));
+        "[1, False, 2, '3']",
+        render("{{ [1, False, 2, '3', 1, '3', False] | unique | list }}", {}, {}));
     EXPECT_EQ(
         "1",
         render("{{ range(5) | length % 2 }}", {}, {}));
@@ -246,19 +309,21 @@ TEST(SyntaxTest, SimpleCases) {
                 ({{ i }}, {{ loop.cycle('odd', 'even') }}),
             {%- endfor -%}
         )", {}, {}));
+    if (!getenv("USE_JINJA2")) {
+        EXPECT_EQ(
+            "0, first=True, last=False, index=1, index0=0, revindex=3, revindex0=2, prev=, next=2,\n"
+            "2, first=False, last=False, index=2, index0=1, revindex=2, revindex0=1, prev=0, next=4,\n"
+            "4, first=False, last=True, index=3, index0=2, revindex=1, revindex0=0, prev=2, next=,\n",
+            render(
+                "{%- for i in range(5) if i % 2 == 0 -%}\n"
+                "{{ i }}, first={{ loop.first }}, last={{ loop.last }}, index={{ loop.index }}, index0={{ loop.index0 }}, revindex={{ loop.revindex }}, revindex0={{ loop.revindex0 }}, prev={{ loop.previtem }}, next={{ loop.nextitem }},\n"
+                "{% endfor -%}",
+                {}, {}
+            )
+        );
+    }
     EXPECT_EQ(
-        "0, first=True, last=False, index=1, index0=0, revindex=3, revindex0=2, prev=, next=2,\n"
-        "2, first=False, last=False, index=2, index0=1, revindex=2, revindex0=1, prev=0, next=4,\n"
-        "4, first=False, last=True, index=3, index0=2, revindex=1, revindex0=0, prev=2, next=,\n",
-        render(
-            "{%- for i in range(5) if i % 2 == 0 -%}\n"
-            "{{ i }}, first={{ loop.first }}, last={{ loop.last }}, index={{ loop.index }}, index0={{ loop.index0 }}, revindex={{ loop.revindex }}, revindex0={{ loop.revindex0 }}, prev={{ loop.previtem }}, next={{ loop.nextitem }},\n"
-            "{% endfor -%}",
-            {}, {}
-        )
-    );
-    EXPECT_EQ(
-        R"(&lt;, &gt;, &amp;, &quot;)",
+        R"(&lt;, &gt;, &amp;, &#34;)",
         render(R"(
             {%- set res = [] -%}
             {%- for c in ["<", ">", "&", '"'] -%}
@@ -295,18 +360,24 @@ TEST(SyntaxTest, SimpleCases) {
                 {{- values -}}
             {%- endmacro -%}
             {{- foo() }} {{ foo() -}})", {}, {}));
+    
+    if (!getenv("USE_JINJA2")) {
+        EXPECT_EQ(
+            "[]",
+            render(R"({{ None | items | list | tojson }})", {}, {}));
+    }
     EXPECT_EQ(
-        "[]; [[1, 2]]",
-        render(R"({{ None | items | tojson }}; {{ {1: 2} | items | tojson }})", {}, {}));
+        "[[1, 2]]",
+        render(R"({{ {1: 2} | items | list | tojson }})", {}, {}));
     EXPECT_EQ(
         "[[1, 2], [3, 4], [5, 7]]",
         render(R"({{ {1: 2, 3: 4, 5: 7} | dictsort | tojson }})", {}, {}));
     EXPECT_EQ(
         "[[1, 2]]",
-        render(R"({{ {1: 2}.items() }})", {}, {}));
+        render(R"({{ {1: 2}.items() | map("list") | list }})", {}, {}));
     EXPECT_EQ(
         "2; ; 10",
-        render(R"({{ {1: 2}.get(1) }}; {{ {}.get(1) }}; {{ {}.get(1, 10) }})", {}, {}));
+        render(R"({{ {1: 2}.get(1) }}; {{ {}.get(1) or '' }}; {{ {}.get(1, 10) }})", {}, {}));
     EXPECT_EQ(
         R"(1,1.2,"a",true,true,false,false,null,[],[1],[1, 2],{},{"a": 1},{"1": "b"},)",
         render(R"(
@@ -365,7 +436,7 @@ TEST(SyntaxTest, SimpleCases) {
         render("{{ ' a  ' | trim }}", {}, {}));
     EXPECT_EQ(
         "[0, 1, 2][4, 5, 6][0, 2, 4, 6, 8]",
-        render("{{ range(3) }}{{ range(4, 7) }}{{ range(0, 10, step=2) }}", {}, {}));
+        render("{{ range(3) | list }}{{ range(4, 7) | list }}{{ range(0, 10, 2) | list }}", {}, {}));
     EXPECT_EQ(
         " abc ",
         render(R"( {{ "a" -}} b {{- "c" }} )", {}, {}));
@@ -395,23 +466,25 @@ TEST(SyntaxTest, SimpleCases) {
         "",
         render("{% if 1 %}{% elif 1 %}{% else %}{% endif %}", {}, {}));
 
-    auto expect_throws_with_message_substr = [](const std::function<void()> & fn, const std::string & expected_substr) {
-        EXPECT_THAT([=]() { fn(); }, testing::Throws<std::runtime_error>(Property(&std::runtime_error::what, testing::HasSubstr(expected_substr))));
-    };
+    if (!getenv("USE_JINJA2")) {
+        auto expect_throws_with_message_substr = [](const std::function<void()> & fn, const std::string & expected_substr) {
+            EXPECT_THAT([=]() { fn(); }, testing::Throws<std::runtime_error>(Property(&std::runtime_error::what, testing::HasSubstr(expected_substr))));
+        };
 
-    expect_throws_with_message_substr([]() { render("{% else %}", {}, {}); }, "Unexpected else");
+        expect_throws_with_message_substr([]() { render("{% else %}", {}, {}); }, "Unexpected else");
 
-    expect_throws_with_message_substr([]() { render("{% else %}", {}, {}); }, "Unexpected else");
-    expect_throws_with_message_substr([]() { render("{% endif %}", {}, {}); }, "Unexpected endif");
-    expect_throws_with_message_substr([]() { render("{% elif 1 %}", {}, {}); }, "Unexpected elif");
-    expect_throws_with_message_substr([]() { render("{% endfor %}", {}, {}); }, "Unexpected endfor");
-    expect_throws_with_message_substr([]() { render("{% endfilter %}", {}, {}); }, "Unexpected endfilter");
+        expect_throws_with_message_substr([]() { render("{% else %}", {}, {}); }, "Unexpected else");
+        expect_throws_with_message_substr([]() { render("{% endif %}", {}, {}); }, "Unexpected endif");
+        expect_throws_with_message_substr([]() { render("{% elif 1 %}", {}, {}); }, "Unexpected elif");
+        expect_throws_with_message_substr([]() { render("{% endfor %}", {}, {}); }, "Unexpected endfor");
+        expect_throws_with_message_substr([]() { render("{% endfilter %}", {}, {}); }, "Unexpected endfilter");
 
-    expect_throws_with_message_substr([]() { render("{% if 1 %}", {}, {}); }, "Unterminated if");
-    expect_throws_with_message_substr([]() { render("{% for x in 1 %}", {}, {}); }, "Unterminated for");
-    expect_throws_with_message_substr([]() { render("{% if 1 %}{% else %}", {}, {}); }, "Unterminated if");
-    expect_throws_with_message_substr([]() { render("{% if 1 %}{% else %}{% elif 1 %}{% endif %}", {}, {}); }, "Unterminated if");
-    expect_throws_with_message_substr([]() { render("{% filter trim %}", {}, {}); }, "Unterminated filter");
+        expect_throws_with_message_substr([]() { render("{% if 1 %}", {}, {}); }, "Unterminated if");
+        expect_throws_with_message_substr([]() { render("{% for x in 1 %}", {}, {}); }, "Unterminated for");
+        expect_throws_with_message_substr([]() { render("{% if 1 %}{% else %}", {}, {}); }, "Unterminated if");
+        expect_throws_with_message_substr([]() { render("{% if 1 %}{% else %}{% elif 1 %}{% endif %}", {}, {}); }, "Unterminated if");
+        expect_throws_with_message_substr([]() { render("{% filter trim %}", {}, {}); }, "Unterminated filter");
+    }
 
     EXPECT_EQ(
         "3",

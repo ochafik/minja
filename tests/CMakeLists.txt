@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 
 add_executable(test-syntax test-syntax.cpp)
+target_compile_features(test-syntax PUBLIC cxx_std_17)
 target_link_libraries(test-syntax PRIVATE
     nlohmann_json::nlohmann_json
     gtest_main
@@ -14,7 +15,12 @@ target_link_libraries(test-syntax PRIVATE
 )
 gtest_discover_tests(test-syntax)
 
+add_test(NAME test-syntax-jinja2 COMMAND test-syntax)
+set_tests_properties(test-syntax-jinja2 PROPERTIES ENVIRONMENT "USE_JINJA2=1;PYTHON_EXECUTABLE=${Python_EXECUTABLE};PYTHONPATH=${CMAKE_SOURCE_DIR}")
+
+
 add_executable(test-chat-template test-chat-template.cpp)
+target_compile_features(test-chat-template PUBLIC cxx_std_17)
 target_link_libraries(test-chat-template PRIVATE nlohmann_json::nlohmann_json)
 
 set(MODEL_IDS
@@ -68,14 +74,20 @@ set(MODEL_IDS
     TheBloke/FusionNet_34Bx2_MoE-AWQ
 
     # Broken, TODO:
-    # fireworks-ai/llama-3-firefunction-v2 
+    # fireworks-ai/llama-3-firefunction-v2 # https://github.com/google/minja/issues/7
+    # ai21labs/AI21-Jamba-1.5-Large # https://github.com/google/minja/issues/8
 
     # Can't find template(s), TODO:
-    # ai21labs/Jamba-v0.1
     # apple/OpenELM-1_1B-Instruct 
     # dreamgen/WizardLM-2-7B
     # xai-org/grok-1
 )
+
+if(WIN32)
+    list(REMOVE_ITEM MODEL_IDS
+        bofenghuang/vigogne-2-70b-chat
+    )
+endif()
 
 # Create one test case for each {template, context} combination
 file(GLOB CONTEXT_FILES "${CMAKE_SOURCE_DIR}/tests/contexts/*.json")
@@ -109,6 +121,7 @@ if (MINJA_FUZZTEST_ENABLED)
         fuzztest_setup_fuzzing_flags()
     endif()
     add_executable(test-fuzz test-fuzz.cpp)
+    target_compile_features(test-fuzz PUBLIC cxx_std_17)
     target_include_directories(test-fuzz PRIVATE ${fuzztest_BINARY_DIR})
     target_link_libraries(test-fuzz PRIVATE nlohmann_json::nlohmann_json)
     link_fuzztest(test-fuzz)
