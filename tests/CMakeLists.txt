@@ -16,7 +16,7 @@ target_link_libraries(test-syntax PRIVATE
 gtest_discover_tests(test-syntax)
 
 add_test(NAME test-syntax-jinja2 COMMAND test-syntax)
-set_tests_properties(test-syntax-jinja2 PROPERTIES ENVIRONMENT "USE_JINJA2=1;PYTHON_EXECUTABLE=${Python_EXECUTABLE}")
+set_tests_properties(test-syntax-jinja2 PROPERTIES ENVIRONMENT "USE_JINJA2=1;PYTHON_EXECUTABLE=${Python_EXECUTABLE};PYTHONPATH=${CMAKE_SOURCE_DIR}")
 
 
 add_executable(test-chat-template test-chat-template.cpp)
