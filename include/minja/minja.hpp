@@ -2557,7 +2557,7 @@ inline std::shared_ptr<Context> Context::builtins() {
       return (int64_t) items.size();
   }));
   globals.set("safe", simple_function("safe", { "value" }, [](const std::shared_ptr<Context> &, Value & args) -> Value {
-      return args.at("value");
+      return args.at("value").to_str();
   }));
   globals.set("string", simple_function("string", { "value" }, [](const std::shared_ptr<Context> &, Value & args) -> Value {
       return args.at("value").to_str();

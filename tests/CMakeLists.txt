@@ -43,7 +43,6 @@ set(MODEL_IDS
     google/gemma-7b-it # Gated
     indischepartij/MiniCPM-3B-OpenHermes-2.5-v2
     mattshumer/Reflection-Llama-3.1-70B
-    meetkai/functionary-medium-v3.1
     meetkai/functionary-medium-v3.2
     meta-llama/Llama-3.2-3B-Instruct # Gated
     meta-llama/Meta-Llama-3.1-8B-Instruct # Gated
@@ -74,6 +73,7 @@ set(MODEL_IDS
     TheBloke/FusionNet_34Bx2_MoE-AWQ
 
     # Broken, TODO:
+    # meetkai/functionary-medium-v3.1 # jinja2 expectation is computed w/ wrong escapes
     # fireworks-ai/llama-3-firefunction-v2 # https://github.com/google/minja/issues/7
     # ai21labs/AI21-Jamba-1.5-Large # https://github.com/google/minja/issues/8
 

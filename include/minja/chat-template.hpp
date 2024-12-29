@@ -32,8 +32,7 @@ class chat_template {
     std::string eos_token_;
     std::shared_ptr<minja::TemplateNode> template_root_;
 
-    bool renders_needles(
-        const std::vector<std::string> & needles,
+    std::string try_render(
         const nlohmann::ordered_json & messages,
         const nlohmann::ordered_json & tools,
         bool add_generation_prompt,
@@ -41,14 +40,11 @@ class chat_template {
     {
         try {
             auto prompt = apply(messages, tools, add_generation_prompt, extra_context);
-            for (const auto & needle : needles) {
-                if (prompt.find(needle) == std::string::npos) {
-                    return false;
-                }
-            }
-            return true;
+            // fprintf(stderr, "Prompt: %s\n", prompt.c_str());
+            return prompt;
         } catch (const std::exception & e) {
-            return false;
+            // fprintf(stderr, "Error: %s\n", e.what());
+            return "";
         }
     }
 
@@ -62,15 +58,58 @@ class chat_template {
             /* .keep_trailing_newline = */ false,
         });
         supports_tools_ = source.find("tools") != std::string::npos;
-        requires_object_arguments_ =
-            source.find("tool_call.arguments | items") != std::string::npos
-            || source.find("tool_call.arguments | tojson") != std::string::npos;
+        
+        auto renders_string_arguments =
+            try_render({
+                {
+                    {"role", "user"},
+                    {"content", "Hey"}
+                },
+                {
+                    {"role", "assistant"},
+                    {"tool_calls", json::array({
+                        {
+                            {"id", "call_1___"},
+                            {"type", "function"},
+                            {"function", {
+                                {"arguments", "{\"code\": \"print('Hello, World!')\"}"},
+                                {"name", "ipython"},
+                            }},
+                        },
+                    })},
+                }
+            }, {}, false).find("{\"code\": \"print") != std::string::npos;
+        if (!renders_string_arguments) {
+            auto renders_object_arguments =
+                try_render({
+                    {
+                        {"role", "user"},
+                        {"content", "Hey"}
+                    },
+                    {
+                        {"role", "assistant"},
+                        {"tool_calls", json::array({
+                            {
+                                {"id", "call_1___"},
+                                {"type", "function"},
+                                {"function", {
+                                    {"arguments", {
+                                        {"code", "print('Hello, World!')"},
+                                    }},
+                                    {"name", "ipython"},
+                                }},
+                            },
+                        })},
+                    }
+                }, {}, false).find("{\"code\": \"print") != std::string::npos;
+            requires_object_arguments_ = renders_object_arguments;
+        }
         supports_parallel_tool_calls_ = source.find("tool_call_id") != std::string::npos;
 
-        supports_system_role_ = renders_needles({"<System Needle>"}, {
+        supports_system_role_ = try_render({
             {{"role", "system"}, {"content", "<System Needle>"}},
             {{"role", "user"},   {"content", "Hey"}}
-        }, {}, false);
+        }, {}, false).find("<System Needle>") != std::string::npos;
     }
 
     const std::string & source() const { return source_; }
@@ -159,7 +198,6 @@ class chat_template {
                     message.erase("name");
                 }
 
-                // std::string content = message["content"];
                 if (!message["content"].is_null() && !supports_system_role_) {
                     std::string content = message.at("content");
                     if (role == "system") {

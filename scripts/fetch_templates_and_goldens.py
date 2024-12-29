@@ -11,16 +11,17 @@
   All files are written to the specified output folder.
 
   Usage:
-    python tests/fetch_templates_and_goldens.py output_folder context_file1.json context_file2.json ... model_id1 model_id2 ...
+    python scripts/fetch_templates_and_goldens.py output_folder context_file1.json context_file2.json ... model_id1 model_id2 ...
 
   Example:
     pip install -r requirements.txt
-    python tests/fetch_templates_and_goldens.py ./test_files tests/contexts/*.json microsoft/Phi-3-medium-4k-instruct Qwen/Qwen2-7B-Instruct
+    python scripts/fetch_templates_and_goldens.py ./test_files tests/contexts/*.json mistralai/Mistral-Large-Instruct-2407 meetkai/functionary-medium-v3.1.jinja microsoft/Phi-3-medium-4k-instruct Qwen/Qwen2-7B-Instruct
 '''
 
 import logging
 import datetime
 import os
+import sys
 from huggingface_hub import hf_hub_download
 import json
 import jinja2
@@ -37,9 +38,8 @@ def raise_exception(message: str):
     raise ValueError(message)
 
 
-def tojson(x, ensure_ascii=False, indent=None, separators=None, sort_keys=False):
-    return json.dumps(x, ensure_ascii=ensure_ascii, indent=indent, separators=separators, sort_keys=sort_keys)
-
+def tojson(eval_ctx, value, indent=None):
+    return json.dumps(value, indent=indent)
 
 TEST_DATE = os.environ.get('TEST_DATE', '2024-07-26')
 
@@ -72,16 +72,61 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
         lstrip_blocks=True,
         extensions=[jinja2.ext.loopcontrols]
     )
+    template = env.from_string(template_src)
+    
     env.filters['safe'] = lambda x: x
     env.filters['tojson'] = tojson
     env.globals['raise_exception'] = raise_exception
     env.globals['strftime_now'] = strftime_now
 
     template_handles_tools = 'tools' in template_src
-    template_hates_the_system = 'System role not supported' in template_src
+    
 
-    template = env.from_string(template_src)
-
+    def renders(messages, *, tools=[], add_generation_prompt=False, extra_context={}, expect_strings=[]):
+        try:
+            prompt = template.render(messages=messages, tools=tools, add_generation_prompt=add_generation_prompt, **extra_context)
+            for str in expect_strings:
+                if str not in prompt:
+                    # print(f"Expected string not found: {str}\nin prompt:\n{prompt}", file=sys.stderr, flush=True)
+                    return False
+            return True
+        except Exception as e:
+            # print(f"Error rendering template with messages {messages}: {e}", file=sys.stderr, flush=True)
+            return False
+    
+    basic_extra_context = {
+        "bos_token": "<|startoftext|>",
+        "eos_token": "<|endoftext|>",
+    }
+    renders_string_arguments = renders([
+        {"role": "user", "content": "Hey"},
+        {"role": "assistant", "tool_calls": [{
+          "id": "call_1___",
+          "type": "function",
+          "function": {
+            "arguments": "{\"code\": \"print('Hello, World!')\"}",
+            "name": "ipython"
+          }
+        }]}
+    ], extra_context=basic_extra_context, expect_strings=[r'{"code": "print'])
+    renders_object_arguments = renders([
+        {"role": "user", "content": "Hey"},
+        {"role": "assistant", "tool_calls": [{
+          "id": "call_1___",
+          "type": "function",
+          "function": {
+            "arguments": {"code": "print('Hello, World!')"},
+            "name": "ipython"
+          }
+        }]}
+    ], extra_context=basic_extra_context, expect_strings=[r'{"code": "print'])
+    requires_object_arguments = not renders_string_arguments and renders_object_arguments
+    
+    supports_system_role = renders([
+        {"role": "system", "content": "System Needle"},
+        {"role": "user", "content": "Hey"}
+    ], extra_context=basic_extra_context, expect_strings=["System Needle"])
+    
     for context_file in context_files:
         context_name = os.path.basename(context_file).replace(".json", "")
         with open(context_file, 'r') as f:
@@ -90,15 +135,13 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
         if not template_handles_tools and 'tools' in context:
             continue
 
-        if template_hates_the_system and any(m['role'] == 'system' for m in context['messages']):
+        if not supports_system_role and any(m['role'] == 'system' for m in context['messages']):
             continue
 
         output_file = join_cmake_path(output_folder, f'{base_name}-{context_name}.txt')
 
-        render_context = json.loads(json.dumps(context))
-
-        if 'tool_call.arguments | items' in template_src or 'tool_call.arguments | tojson' in template_src:
-            for message in render_context['messages']:
+        if requires_object_arguments:
+            for message in context['messages']:
                 if 'tool_calls' in message:
                     for tool_call in message['tool_calls']:
                         if tool_call.get('type') == 'function':
@@ -106,14 +149,14 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                             tool_call['function']['arguments'] = json.loads(arguments)
 
         try:
-            output = template.render(**render_context)
+            output = template.render(**context)
         except Exception as e1:
             for message in context["messages"]:
                 if message.get("content") is None:
                     message["content"] = ""
 
             try:
-                output = template.render(**render_context)
+                output = template.render(**context)
             except Exception as e2:
                 logger.info(f"  ERROR: {e2} (after first error: {e1})")
                 output = f"ERROR: {e2}"
