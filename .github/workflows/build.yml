@@ -59,6 +59,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Configure CMake
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ matrix.type }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
