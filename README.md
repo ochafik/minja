@@ -33,7 +33,7 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 This library is header-only: just copy the header(s) you need, make sure to use a compiler that handles C++11 and you're done. Oh, and get [nlohmann::json](https://github.com/nlohmann/json)'s `json.hpp` in your include path.
 
-See API in [minja/minja.hpp](./include/minja/chat-template.hpp) and [minja/chat-template.h](./include/minja/chat-template.hpp) (experimental).
+See API in [minja/minja.hpp](./include/minja/minja.hpp) and [minja/chat-template.h](./include/minja/chat-template.hpp) (experimental).
 
 For raw Jinja templating (see [examples/raw.cpp](./examples/raw.cpp)):
 
@@ -110,13 +110,13 @@ Main limitations (non-exhaustive list):
 
 ## Roadmap / TODOs
 
-- Fix known issues w/ CRLF on Windows
+- [x] Fix known issues w/ CRLF on Windows
+- [ ] Integrate to llama.cpp: https://github.com/ggerganov/llama.cpp/pull/11016 + https://github.com/ggerganov/llama.cpp/pull/9639
 - Improve fuzzing coverage:
     - use thirdparty jinja grammar to guide exploration of inputs (or implement prettification of internal ASTs and use them to generate arbitrary values)
     - fuzz each filter / test
 - Measure / track test coverage
 - Setup performance tests
-- Integrate to llama.cpp: https://github.com/ggerganov/llama.cpp/pull/9639
 - Simplify two-pass parsing
     - Pass tokens to IfNode and such
 - Macro nested set scope = global?

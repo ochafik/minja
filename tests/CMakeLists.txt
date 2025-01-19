@@ -83,12 +83,6 @@ set(MODEL_IDS
     # xai-org/grok-1
 )
 
-if(WIN32)
-    list(REMOVE_ITEM MODEL_IDS
-        bofenghuang/vigogne-2-70b-chat
-    )
-endif()
-
 # Create one test case for each {template, context} combination
 file(GLOB CONTEXT_FILES "${CMAKE_SOURCE_DIR}/tests/contexts/*.json")
 execute_process(

@@ -399,11 +399,11 @@ public:
     }
   }
   void erase(size_t index) {
-    if (array_) throw std::runtime_error("Value is not an array: " + dump());
+    if (!array_) throw std::runtime_error("Value is not an array: " + dump());
     array_->erase(array_->begin() + index);
   }
   void erase(const std::string & key) {
-    if (object_) throw std::runtime_error("Value is not an object: " + dump());
+    if (!object_) throw std::runtime_error("Value is not an object: " + dump());
     object_->erase(key);
   }
   const Value& at(const Value & index) const {
@@ -1337,12 +1337,10 @@ struct ArgumentsExpression {
 };
 
 static std::string strip(const std::string & s) {
-  static std::regex trailing_spaces_regex("^\\s+|\\s+$");
-  return std::regex_replace(s, trailing_spaces_regex, "");
-  // auto start = s.find_first_not_of(" \t\n\r");
-  // if (start == std::string::npos) return "";
-  // auto end = s.find_last_not_of(" \t\n\r");
-  // return s.substr(start, end - start + 1);
+  auto start = s.find_first_not_of(" \t\n\r");
+  if (start == std::string::npos) return "";
+  auto end = s.find_last_not_of(" \t\n\r");
+  return s.substr(start, end - start + 1);
 }
 
 static std::string html_escape(const std::string & s) {
