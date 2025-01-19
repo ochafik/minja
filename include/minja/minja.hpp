@@ -367,11 +367,11 @@ public:
     }
   }
   void erase(size_t index) {
-    if (array_) throw std::runtime_error("Value is not an array: " + dump());
+    if (!array_) throw std::runtime_error("Value is not an array: " + dump());
     array_->erase(array_->begin() + index);
   }
   void erase(const std::string & key) {
-    if (object_) throw std::runtime_error("Value is not an object: " + dump());
+    if (!object_) throw std::runtime_error("Value is not an object: " + dump());
     object_->erase(key);
   }
   const Value& at(const Value & index) const {
