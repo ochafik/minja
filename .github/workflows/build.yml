@@ -31,7 +31,7 @@ jobs:
           - os: windows-latest
             build: 'msvc-arm64'
             defines: '-G "Ninja Multi-Config" -D CMAKE_TOOLCHAIN_FILE=cmake/arm64-windows-msvc.cmake'
-            test: false
+            test: true
           - os: macos-latest
             build: default
             defines: ''
