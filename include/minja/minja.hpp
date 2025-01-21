@@ -2419,7 +2419,7 @@ private:
 public:
 
     static std::shared_ptr<TemplateNode> parse(const std::string& template_str, const Options & options) {
-        Parser parser(std::make_shared<std::string>(template_str), options);
+        Parser parser(std::make_shared<std::string>(normalize_newlines(template_str)), options);
         auto tokens = parser.tokenize();
         TemplateTokenIterator begin = tokens.begin();
         auto it = begin;

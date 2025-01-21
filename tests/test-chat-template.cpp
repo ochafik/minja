@@ -41,7 +41,7 @@ static std::string read_file(const std::string &path) {
     std::string out;
     out.resize(static_cast<size_t>(size));
     fs.read(&out[0], static_cast<std::streamsize>(size));
-    return minja::normalize_newlines(out);
+    return out;
 }
 
 int main(int argc, char *argv[]) {
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 
         std::string expected;
         try {
-            expected = read_file(golden_file);
+            expected = minja::normalize_newlines(read_file(golden_file));
         } catch (const std::exception &e) {
             std::cerr << "Failed to read golden file: " << golden_file << std::endl;
             std::cerr << e.what() << std::endl;
