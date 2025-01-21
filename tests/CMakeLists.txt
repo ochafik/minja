@@ -8,8 +8,9 @@
 
 add_executable(test-syntax test-syntax.cpp)
 target_compile_features(test-syntax PUBLIC cxx_std_17)
-if (WIN32)
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
     target_compile_definitions(test-syntax PUBLIC _CRT_SECURE_NO_WARNINGS)
+    target_compile_options(gtest PRIVATE -Wno-language-extension-token)
 endif()
 target_link_libraries(test-syntax PRIVATE
     nlohmann_json::nlohmann_json
