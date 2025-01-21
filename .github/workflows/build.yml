@@ -23,18 +23,23 @@ jobs:
           - os: windows-latest
             build: 'default'
             defines: ''
+            test: true
           - os: windows-latest
             build: 'llvm-arm64'
             defines: '-G "Ninja Multi-Config" -D CMAKE_TOOLCHAIN_FILE=cmake/arm64-windows-llvm.cmake'
+            test: false
           - os: windows-latest
             build: 'msvc-arm64'
             defines: '-G "Ninja Multi-Config" -D CMAKE_TOOLCHAIN_FILE=cmake/arm64-windows-msvc.cmake'
+            test: false
           - os: macos-latest
             build: default
             defines: ''
+            test: true
           - os: ubuntu-latest
             build: default
             defines: ''
+            test: true
         type: [
           Release,
           Debug,
@@ -75,4 +80,5 @@ jobs:
         run: cmake --build ${{github.workspace}}/build --config ${{ matrix.type }} --parallel
 
       - name: Test
+        if: ${{ matrix.setup.test }}
         run: ctest --test-dir build --output-on-failure --verbose -C ${{ matrix.type }}
