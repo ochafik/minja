@@ -374,6 +374,9 @@ TEST(SyntaxTest, SimpleCases) {
         EXPECT_EQ(
             "[]",
             render(R"({{ None | items | list | tojson }})", {}, {}));
+        EXPECT_EQ(
+            "Foo",
+            render(R"({% generation %}Foo{% endgeneration %})", {}, {}));
     }
     EXPECT_EQ(
         "[[1, 2]]",
@@ -493,6 +496,7 @@ TEST(SyntaxTest, SimpleCases) {
 
         EXPECT_THAT([]() { render("{% if 1 %}", {}, {}); }, ThrowsWithSubstr("Unterminated if"));
         EXPECT_THAT([]() { render("{% for x in 1 %}", {}, {}); }, ThrowsWithSubstr("Unterminated for"));
+        EXPECT_THAT([]() { render("{% generation %}", {}, {}); }, ThrowsWithSubstr("Unterminated generation"));
         EXPECT_THAT([]() { render("{% if 1 %}{% else %}", {}, {}); }, ThrowsWithSubstr("Unterminated if"));
         EXPECT_THAT([]() { render("{% if 1 %}{% else %}{% elif 1 %}{% endif %}", {}, {}); }, ThrowsWithSubstr("Unterminated if"));
         EXPECT_THAT([]() { render("{% filter trim %}", {}, {}); }, ThrowsWithSubstr("Unterminated filter"));
