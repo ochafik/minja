@@ -56,6 +56,11 @@ def join_cmake_path(parent, child):
     return '/'.join(x.replace(r'\\', '/') for x in (parent, child))
 
 def handle_chat_template(output_folder, model_id, variant, template_src, context_files):
+
+    if '{% generation %}' in template_src:
+        print('Removing {% generation %} blocks from template', file=sys.stderr)
+        template_src = template_src.replace('{% generation %}', '').replace('{% endgeneration %}', '')
+
     model_name = model_id.replace("/", "-")
     base_name = f'{model_name}-{variant}' if variant else model_name
     template_file = join_cmake_path(output_folder, f'{base_name}.jinja')
@@ -126,6 +131,10 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
         {"role": "system", "content": "System Needle"},
         {"role": "user", "content": "Hey"}
     ], extra_context=basic_extra_context, expect_strings=["System Needle"])
+
+    requires_typed_content = \
+        not renders([{"role": "user", "content": "Hey"}], extra_context=basic_extra_context, expect_strings=["Hey"]) \
+        and renders([{"role": "user", "content": [{"type": "text", "text": "Hey"}]}], extra_context=basic_extra_context, expect_strings=["Hey"])
     
     for context_file in context_files:
         context_name = os.path.basename(context_file).replace(".json", "")
@@ -147,6 +156,11 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                         if tool_call.get('type') == 'function':
                             arguments = tool_call['function']['arguments']
                             tool_call['function']['arguments'] = json.loads(arguments)
+
+        if requires_typed_content:
+            for message in context['messages']:
+                if 'content' in message and isinstance(message['content'], str):
+                    message['content'] = [{"type": "text", "text": message['content']}]
 
         try:
             output = template.render(**context)
