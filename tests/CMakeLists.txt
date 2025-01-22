@@ -47,6 +47,7 @@ set(MODEL_IDS
     deepseek-ai/DeepSeek-V2.5
     google/gemma-2-2b-it # Gated
     google/gemma-7b-it # Gated
+    MiniMaxAI/MiniMax-Text-01
     indischepartij/MiniCPM-3B-OpenHermes-2.5-v2
     mattshumer/Reflection-Llama-3.1-70B
     meetkai/functionary-medium-v3.2
