@@ -85,6 +85,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
     env.globals['strftime_now'] = strftime_now
 
     template_handles_tools = 'tools' in template_src
+    supports_code_interpreter = 'code_interpreter' in template_src
     
 
     def renders(messages, *, tools=[], add_generation_prompt=False, extra_context={}, expect_strings=[]):
@@ -142,6 +143,11 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
             context = json.load(f)
 
         if not template_handles_tools and 'tools' in context:
+            print(f'Skipping {context_name} test as tools seem unsupported by template {template_file}', file=sys.stderr)
+            continue
+
+        if not supports_code_interpreter and 'tools' in context and any(t['type'] == 'code_interpreter' for t in context['tools']):
+            print(f'Skipping {context_name} test as code_interpreter seems unsupported by template {template_file}', file=sys.stderr)
             continue
 
         if not supports_system_role and any(m['role'] == 'system' for m in context['messages']):
