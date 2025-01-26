@@ -161,7 +161,11 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                     for tool_call in message['tool_calls']:
                         if tool_call.get('type') == 'function':
                             arguments = tool_call['function']['arguments']
-                            tool_call['function']['arguments'] = json.loads(arguments)
+                            try:
+                                arguments = json.loads(arguments)
+                            except:
+                                pass
+                            tool_call['function']['arguments'] = arguments
 
         if requires_typed_content:
             for message in context['messages']:

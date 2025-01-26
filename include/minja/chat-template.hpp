@@ -59,7 +59,7 @@ class chat_template {
             /* .keep_trailing_newline = */ false,
         });
         supports_tools_ = source.find("tools") != std::string::npos;
-        
+
         auto renders_string_arguments =
             try_raw_render({
                 {
@@ -173,7 +173,12 @@ class chat_template {
                             if (tool_call["type"] == "function") {
                                 auto & function = tool_call.at("function");
                                 std::string arguments = function.at("arguments");
-                                function["arguments"] = json::parse(arguments);
+                                try {
+                                    function["arguments"] = json::parse(arguments);
+                                } catch (const std::exception & ecvt) {
+                                    fprintf(stderr, "Failed to parse arguments: %s\n", ecvt.what());
+                                    function["arguments"] = arguments;
+                                }
                             }
                         }
                     }
