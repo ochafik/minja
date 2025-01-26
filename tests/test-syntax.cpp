@@ -184,6 +184,9 @@ TEST(SyntaxTest, SimpleCases) {
         R"([{'a': 1}])",
         render(R"({{ [{"a": 1}, {"a": 2}, {}] | selectattr("a", "equalto", 1) | list }})", {}, {}));
     EXPECT_EQ(
+        R"([{'a': 2}, {}])",
+        render(R"({{ [{"a": 1}, {"a": 2}, {}] | rejectattr("a", "equalto", 1) | list }})", {}, {}));
+    EXPECT_EQ(
         "[1, 2]",
         render(R"({{ [{"a": 1}, {"a": 2}] | map(attribute="a") | list }})", {}, {}));
     EXPECT_EQ(
@@ -251,6 +254,9 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         "Tools: 1, 3...",
         render("{{ 'Tools: ' + [1, 2, 3] | reject('equalto', 2) | join(', ') + '...' }}", {}, {}));
+    EXPECT_EQ(
+        "Tools: 2...",
+        render("{{ 'Tools: ' + [1, 2, 3] | select('equalto', 2) | join(', ') + '...' }}", {}, {}));
     EXPECT_EQ(
         "1, 2, 3",
         render("{{ [1, 2, 3] | join(', ') }}", {}, {}));
