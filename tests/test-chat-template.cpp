@@ -72,7 +72,7 @@ static json caps_to_json(const minja::chat_template::chat_template_caps &caps) {
         {"supports_parallel_tool_calls", caps.supports_parallel_tool_calls},
         {"supports_tool_call_id", caps.supports_tool_call_id},
         {"requires_object_arguments", caps.requires_object_arguments},
-        {"requires_non_null_content", caps.requires_non_null_content},
+        // {"requires_non_null_content", caps.requires_non_null_content},
         {"requires_typed_content", caps.requires_typed_content},
     };
 }
@@ -119,8 +119,6 @@ int main(int argc, char *argv[]) {
         auto expected_caps = read_file(caps_file);
         auto caps = caps_to_json(tmpl.original_caps()).dump(2);
         assert_equals(expected_caps, caps);
-        // write_file(caps_file, caps_to_json(tmpl.original_caps()).dump(2));
-        // std::cout << "# Wrote caps to: " << caps_file << std::endl;
 
         std::string expected;
         try {

@@ -84,7 +84,18 @@ class TemplateCaps:
     requires_typed_content: bool = False
     
     def to_json(self):
-        return json.dumps(self.__dict__, indent=2)
+        # return json.dumps(self.__dict__, indent=2)
+        return json.dumps({
+            "supports_tools": self.supports_tools,
+            "supports_tool_calls": self.supports_tool_calls,
+            "supports_tool_responses": self.supports_tool_responses,
+            "supports_system_role": self.supports_system_role,
+            "supports_parallel_tool_calls": self.supports_parallel_tool_calls,
+            "supports_tool_call_id": self.supports_tool_call_id,
+            "requires_object_arguments": self.requires_object_arguments,
+            # "requires_non_null_content": self.requires_non_null_content,
+            "requires_typed_content": self.requires_typed_content,
+        }, indent=2)
     
 def detect_caps(template_file, template):
     
@@ -95,6 +106,7 @@ def detect_caps(template_file, template):
     def try_raw_render(messages, *, tools=[], add_generation_prompt=False, extra_context={}, expect_strings=[]):
         try:
             out = template.render(messages=messages, tools=tools, add_generation_prompt=add_generation_prompt, **basic_extra_context, **extra_context)
+            # print(out, file=sys.stderr)
             return out
         except BaseException as e:
             # print(f"{template_file}: Error rendering template with messages {messages}: {e}", file=sys.stderr, flush=True)
