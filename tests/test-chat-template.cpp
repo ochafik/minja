@@ -23,8 +23,19 @@ using json = nlohmann::ordered_json;
 template <class T>
 static void assert_equals(const T &expected, const T &actual){
     if (expected != actual) {
-        std::cerr << "Expected: " << expected << std::endl;
-        std::cerr << "Actual: " << actual << std::endl;
+        std::cerr << "Expected: " << expected << "\n\n";
+        std::cerr << "Actual: " << actual << "\n\n";
+        auto i_divergence = std::min(expected.size(), actual.size());
+        for (size_t i = 0; i < i_divergence; i++) {
+            if (expected[i] != actual[i]) {
+                i_divergence = i;
+                break;
+            }
+        }
+        std::cerr << "Divergence at index " << i_divergence << "\n\n";
+        std::cerr << "Expected suffix: " << expected.substr(i_divergence) << "\n\n";
+        std::cerr << "Actual suffix: " << actual.substr(i_divergence) << "\n\n";
+        
         std::cerr << std::flush;
         throw std::runtime_error("Test failed");
     }

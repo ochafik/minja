@@ -55,6 +55,21 @@ def join_cmake_path(parent, child):
     '''
     return '/'.join(x.replace(r'\\', '/') for x in (parent, child))
 
+
+def add_system(messages, system_prompt):
+    if len(messages) > 0 and messages[0]["role"] == "system":
+        existing_system = messages[0]["content"]
+        messages[0] = {
+            "role": "system",
+            "content": existing_system + "\n" + system_prompt,
+        }
+    else:
+        messages.insert(0, {
+            "role": "system",
+            "content": system_prompt,
+        })
+
+    
 def handle_chat_template(output_folder, model_id, variant, template_src, context_files):
 
     if '{% generation %}' in template_src:
@@ -84,10 +99,6 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
     env.globals['raise_exception'] = raise_exception
     env.globals['strftime_now'] = strftime_now
 
-    template_handles_tools = 'tools' in template_src or 'tool_calls' in template_src
-    supports_code_interpreter = 'code_interpreter' in template_src
-    
-
     def renders(messages, *, tools=[], add_generation_prompt=False, extra_context={}, expect_strings=[]):
         try:
             prompt = template.render(messages=messages, tools=tools, add_generation_prompt=add_generation_prompt, **extra_context)
@@ -96,69 +107,103 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                     # print(f"Expected string not found: {str}\nin prompt:\n{prompt}", file=sys.stderr, flush=True)
                     return False
             return True
-        except Exception as e:
-            # print(f"Error rendering template with messages {messages}: {e}", file=sys.stderr, flush=True)
+        except BaseException as e:
+            print(f"{template_file}: Error rendering template with messages {messages}: {e}", file=sys.stderr, flush=True)
             return False
     
     basic_extra_context = {
         "bos_token": "<|startoftext|>",
         "eos_token": "<|endoftext|>",
     }
-    renders_string_arguments = renders([
-        {"role": "user", "content": "Hey"},
-        {"role": "assistant", "tool_calls": [{
-          "id": "call_1___",
-          "type": "function",
-          "function": {
-            "arguments": "{\"code\": \"print('Hello, World!')\"}",
-            "name": "ipython"
-          }
-        }]}
-    ], extra_context=basic_extra_context, expect_strings=[r'{"code": "print'])
-    renders_object_arguments = renders([
-        {"role": "user", "content": "Hey"},
-        {"role": "assistant", "tool_calls": [{
-          "id": "call_1___",
-          "type": "function",
-          "function": {
-            "arguments": {"code": "print('Hello, World!')"},
-            "name": "ipython"
-          }
-        }]}
-    ], extra_context=basic_extra_context, expect_strings=[r'{"code": "print'])
-    requires_object_arguments = not renders_string_arguments and renders_object_arguments
     
-    supports_system_role = renders([
-        {"role": "system", "content": "System Needle"},
-        {"role": "user", "content": "Hey"}
-    ], extra_context=basic_extra_context, expect_strings=["System Needle"])
+    # const json dummy_str_user_msg = {{"role", "user"}, {"content", "Hey"}};
+    # const json dummy_typed_user_msg = {{"role", "user"}, {"content", json::array({{{"type", "text"}, {"text", "Hey"}}})}};
 
+    # requires_typed_content_ =
+    #     !contains(try_raw_render({{dummy_str_user_msg}}, {}, false), "Hey")
+    #     && contains(try_raw_render({{dummy_typed_user_msg}}, {}, false), "Hey");
+
+    # const auto dummy_user_msg = requires_typed_content_
+    #     ? dummy_typed_user_msg
+    #     : dummy_str_user_msg;
+    dummy_str_user_msg = {"role": "user", "content": "Hey" }
+    dummy_typed_user_msg = {"role": "user", "content": [{"type": "text", "text": "Hey"}]}
+    
     requires_typed_content = \
-        not renders([{"role": "user", "content": "Hey"}], extra_context=basic_extra_context, expect_strings=["Hey"]) \
-        and renders([{"role": "user", "content": [{"type": "text", "text": "Hey"}]}], extra_context=basic_extra_context, expect_strings=["Hey"])
+        not renders([dummy_str_user_msg], extra_context=basic_extra_context, expect_strings=["Hey"]) \
+        and renders([dummy_typed_user_msg], extra_context=basic_extra_context, expect_strings=["Hey"])
+    dummy_user_msg = dummy_typed_user_msg if requires_typed_content else dummy_str_user_msg
+    
+    needle = "<System Needle>"
+    needle_system_msg = {"role": "system", "content": [{"type": "text", "text": needle}] if requires_typed_content else needle}
+    
+    supports_code_interpreter = 'code_interpreter' in template_src
+    supports_parallel_tool_calls = 'tool_call_id' in template_src
+    supports_tool_calls = 'tool_calls' in template_src
+    supports_system_role = renders([needle_system_msg, dummy_user_msg], extra_context=basic_extra_context, expect_strings=[needle])
+    supports_tools = renders([dummy_user_msg], tools=[{
+        "type": "function",
+        "function": {
+            "name": "some_tool",
+            "description": "Some tool",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "arg": "string",
+                },
+                "required": ["arg"],
+            },
+        },
+    }], extra_context=basic_extra_context, expect_strings=["some_tool"])
+    
+    requires_object_arguments = \
+        renders([
+            dummy_user_msg,
+            {"role": "assistant", "content": "", "tool_calls": [{
+            "id": "call_1___",
+            "type": "function",
+            "function": {
+                "arguments": {"code": "print('Hello, World!')"},
+                "name": "ipython"
+            }
+            }]}
+        ], extra_context=basic_extra_context, expect_strings=[r'{"code": "print']) \
+        and not renders([
+            dummy_user_msg,
+            {"role": "assistant", "content": "", "tool_calls": [{
+            "id": "call_1___",
+            "type": "function",
+            "function": {
+                "arguments": "{\"code\": \"print('Hello, World!')\"}",
+                "name": "ipython"
+            }
+            }]}
+        ], extra_context=basic_extra_context, expect_strings=[r'{"code": "print'])
     
     for context_file in context_files:
         context_name = os.path.basename(context_file).replace(".json", "")
         with open(context_file, 'r') as f:
             context = json.load(f)
 
-        if not template_handles_tools and 'tools' in context:
+        has_tools = 'tools' in context
+        needs_tools_in_system = has_tools and not supports_tools
+        
+        if not supports_tool_calls and has_tools:
             print(f'Skipping {context_name} test as tools seem unsupported by template {template_file}', file=sys.stderr)
             continue
-
-        if not supports_code_interpreter and 'tools' in context and any(t['type'] == 'code_interpreter' for t in context['tools']):
-            print(f'Skipping {context_name} test as code_interpreter seems unsupported by template {template_file}', file=sys.stderr)
-            continue
-
-        if not supports_system_role and any(m['role'] == 'system' for m in context['messages']):
+        
+        if not supports_system_role and (any(m['role'] == 'system' for m in context['messages']) or needs_tools_in_system):
             continue
 
         output_file = join_cmake_path(output_folder, f'{base_name}-{context_name}.txt')
 
-        if requires_object_arguments:
-            for message in context['messages']:
-                if 'tool_calls' in message:
-                    for tool_call in message['tool_calls']:
+        if needs_tools_in_system:
+            add_system(context['messages'], f"Available tools: {json.dumps(context['tools'], indent=2)}")
+
+        for message in context['messages']:
+            if 'tool_calls' in message:
+                for tool_call in message['tool_calls']:
+                    if requires_object_arguments:
                         if tool_call.get('type') == 'function':
                             arguments = tool_call['function']['arguments']
                             try:
@@ -166,16 +211,40 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                             except:
                                 pass
                             tool_call['function']['arguments'] = arguments
+                if not supports_tool_calls:
+                    message['content'] = json.dumps({
+                        "tool_calls": [
+                            {
+                                "name": tc['function']['name'],
+                                "arguments": json.loads(tc['function']['arguments']),
+                                "id": tc.get('id'),
+                            }
+                            for tc in message['tool_calls']
+                        ],
+                        "content": None if message.get('content', '') == '' else message['content'],
+                    }, indent=2)
+                    del message['tool_calls']
+            if message.get('role') == 'tool' and not supports_tools:
+                message['role'] = 'user'
+                message['content'] = json.dumps({
+                    "tool_response": {
+                        "tool": message['name'],
+                        "content": message['content'],
+                        "tool_call_id": message.get('tool_call_id'),
+                    }
+                }, indent=2)
+                del message['name']
 
         if requires_typed_content:
             for message in context['messages']:
                 if 'content' in message and isinstance(message['content'], str):
                     message['content'] = [{"type": "text", "text": message['content']}]
 
+        # print(json.dumps(context, indent=2), file=sys.stderr)
         try:
             output = template.render(**context)
         except Exception as e1:
-            for message in context["messages"]:
+            for message in context['messages']:
                 if message.get("content") is None:
                     message["content"] = ""
 

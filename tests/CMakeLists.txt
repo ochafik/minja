@@ -17,8 +17,21 @@ target_link_libraries(test-syntax PRIVATE
     gtest_main
     gmock
 )
+
+add_executable(test-capabilities test-capabilities.cpp)
+target_compile_features(test-capabilities PUBLIC cxx_std_17)
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    target_compile_definitions(test-capabilities PUBLIC _CRT_SECURE_NO_WARNINGS)
+    target_compile_options(gtest PRIVATE -Wno-language-extension-token)
+endif()
+target_link_libraries(test-capabilities PRIVATE
+    nlohmann_json::nlohmann_json
+    gtest_main
+    gmock
+)
 if (NOT CMAKE_CROSSCOMPILING)
     gtest_discover_tests(test-syntax)
+    gtest_discover_tests(test-capabilities)
 endif()
 
 add_test(NAME test-syntax-jinja2 COMMAND test-syntax)
