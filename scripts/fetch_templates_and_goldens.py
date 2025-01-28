@@ -15,7 +15,7 @@
 
   Example:
     pip install -r requirements.txt
-    python scripts/fetch_templates_and_goldens.py ./test_files tests/contexts/*.json mistralai/Mistral-Large-Instruct-2407 meetkai/functionary-medium-v3.1.jinja microsoft/Phi-3-medium-4k-instruct Qwen/Qwen2-7B-Instruct
+    python scripts/fetch_templates_and_goldens.py ./test_files tests/contexts/*.json CohereForAI/c4ai-command-r-plus mistralai/Mistral-Large-Instruct-2407 meetkai/functionary-medium-v3.1.jinja microsoft/Phi-3-medium-4k-instruct Qwen/Qwen2-7B-Instruct
 '''
 
 from dataclasses import dataclass
@@ -80,6 +80,7 @@ class TemplateCaps:
     supports_parallel_tool_calls: bool = False
     supports_tool_call_id: bool = False
     requires_object_arguments: bool = False
+    requires_non_null_content: bool = False
     requires_typed_content: bool = False
     
     def to_json(self):
@@ -93,7 +94,8 @@ def detect_caps(template_file, template):
     }
     def try_raw_render(messages, *, tools=[], add_generation_prompt=False, extra_context={}, expect_strings=[]):
         try:
-            return template.render(messages=messages, tools=tools, add_generation_prompt=add_generation_prompt, **basic_extra_context, **extra_context)
+            out = template.render(messages=messages, tools=tools, add_generation_prompt=add_generation_prompt, **basic_extra_context, **extra_context)
+            return out
         except BaseException as e:
             # print(f"{template_file}: Error rendering template with messages {messages}: {e}", file=sys.stderr, flush=True)
             return ""
@@ -101,21 +103,23 @@ def detect_caps(template_file, template):
     caps = TemplateCaps()
     
     
-    dummy_str_user_msg = {"role": "user", "content": "Hey" }
-    dummy_typed_user_msg = {"role": "user", "content": [{"type": "text", "text": "Hey"}]}
+    user_needle = "<User Needle>"
+    sys_needle = "<System Needle>"
+    dummy_str_user_msg = {"role": "user", "content": user_needle }
+    dummy_typed_user_msg = {"role": "user", "content": [{"type": "text", "text": user_needle}]}
     
     caps.requires_typed_content = \
-        "Hey" not in try_raw_render([dummy_str_user_msg]) \
-        and "Hey" in try_raw_render([dummy_typed_user_msg])
+        (user_needle not in try_raw_render([dummy_str_user_msg])) \
+        and (user_needle in try_raw_render([dummy_typed_user_msg]))
     dummy_user_msg = dummy_typed_user_msg if caps.requires_typed_content else dummy_str_user_msg
     
-    needle = "<System Needle>"
-    needle_system_msg = {"role": "system", "content": [{"type": "text", "text": needle}] if caps.requires_typed_content else needle}
+    needle_system_msg = {"role": "system", "content": [{"type": "text", "text": sys_needle}] if caps.requires_typed_content else sys_needle}
     
     # caps_.supports_system_role = contains(try_raw_render({needle_system_msg, dummy_user_msg,}, {}, false), needle);
-    caps.supports_system_role = needle in try_raw_render([needle_system_msg, dummy_user_msg])
+    caps.supports_system_role = sys_needle in try_raw_render([needle_system_msg, dummy_user_msg])
     
-    caps.supports_tools = "some_tool" in try_raw_render([dummy_user_msg], tools=[{
+    out = try_raw_render([dummy_user_msg], tools=[{
+        "name": "some_tool",
         "type": "function",
         "function": {
             "name": "some_tool",
@@ -123,17 +127,21 @@ def detect_caps(template_file, template):
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "arg": "string",
+                    "arg": {
+                        "type": "string",
+                        "description": "Some arg",
+                    },
                 },
                 "required": ["arg"],
             },
         },
     }])
+    caps.supports_tools = "some_tool" in out
     
-    def make_tool_calls_msg(tool_calls):
+    def make_tool_calls_msg(tool_calls, content=None):
         return {
             "role": "assistant",
-            "content": None,
+            "content": content,
             "tool_calls": tool_calls,
         }
     def make_tool_call(tool_name, arguments):
@@ -146,20 +154,29 @@ def detect_caps(template_file, template):
             }
         }
     
-    dummy_args_obj = {"code": "print('Hello, World!')"}
+    dummy_args_obj = {"argument_needle": "print('Hello, World!')"}
 
-    tool_call_renders_str_arguments = '{"code":' in try_raw_render([
+    out = try_raw_render([
         dummy_user_msg,
-        make_tool_calls_msg([make_tool_call("ipython", json.dumps(dummy_args_obj))])
+        make_tool_calls_msg([make_tool_call("ipython", json.dumps(dummy_args_obj))]),
     ])
-    tool_call_renders_obj_arguments = '{"code":' in try_raw_render([
+    tool_call_renders_str_arguments = '"argument_needle":' in out or "'argument_needle':" in out
+    out = try_raw_render([
         dummy_user_msg,
-        make_tool_calls_msg([make_tool_call("ipython", dummy_args_obj)])
+        make_tool_calls_msg([make_tool_call("ipython", dummy_args_obj)]),
     ])
-
+    tool_call_renders_obj_arguments = '"argument_needle":' in out or "'argument_needle':" in out
+        
     caps.supports_tool_calls = tool_call_renders_str_arguments or tool_call_renders_obj_arguments
     caps.requires_object_arguments = not tool_call_renders_str_arguments and tool_call_renders_obj_arguments
+    
+    empty_out = try_raw_render([dummy_user_msg, {"role": "assistant", "content": ''}])
+    none_out = try_raw_render([dummy_user_msg, {"role": "assistant", "content": None}])
+    caps.requires_non_null_content = \
+        (user_needle in try_raw_render([dummy_user_msg, {"role": "assistant", "content": ''}])) \
+        and (user_needle not in try_raw_render([dummy_user_msg, {"role": "assistant", "content": None}]))
 
+    # raise Exception(f'caps.requires_non_null_content: {caps.requires_non_null_content}, content: {content}, supports_tool_calls: {caps.supports_tool_calls}')
     if caps.supports_tool_calls:
         dummy_args = dummy_args_obj if caps.requires_object_arguments else json.dumps(dummy_args_obj)
         tc1 = make_tool_call("test_tool1", dummy_args)
@@ -198,6 +215,9 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
 
     with open(template_file, 'w') as f:
         f.write(template_src)
+    
+    # with open(template_file, 'r') as f:
+    #     template_src = f.read()
 
     if not context_files:
         print(f"{template_file} n/a {template_file}")
@@ -339,6 +359,8 @@ def main():
                 handle_chat_template(output_folder, model_id, None, chat_template, context_files)
             else:
                 for ct in chat_template:
+                    # if ct['name'] != 'tool_use':
+                    #     continue
                     handle_chat_template(output_folder, model_id, ct['name'], ct['template'], context_files)
         except Exception as e:
             logger.error(f"Error processing model {model_id}: {e}", e)
