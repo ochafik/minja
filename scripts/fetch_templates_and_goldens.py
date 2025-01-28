@@ -18,6 +18,7 @@
     python scripts/fetch_templates_and_goldens.py ./test_files tests/contexts/*.json mistralai/Mistral-Large-Instruct-2407 meetkai/functionary-medium-v3.1.jinja microsoft/Phi-3-medium-4k-instruct Qwen/Qwen2-7B-Instruct
 '''
 
+from dataclasses import dataclass
 import logging
 import datetime
 import os
@@ -69,6 +70,120 @@ def add_system(messages, system_prompt):
             "content": system_prompt,
         })
 
+# data class
+@dataclass
+class TemplateCaps:
+    supports_tools: bool = False
+    supports_tool_calls: bool = False
+    supports_tool_responses: bool = False
+    supports_system_role: bool = False
+    supports_parallel_tool_calls: bool = False
+    supports_tool_call_id: bool = False
+    requires_object_arguments: bool = False
+    requires_typed_content: bool = False
+    
+    def to_json(self):
+        return json.dumps(self.__dict__, indent=2)
+    
+def detect_caps(template_file, template):
+    
+    basic_extra_context = {
+        "bos_token": "<|startoftext|>",
+        "eos_token": "<|endoftext|>",
+    }
+    def try_raw_render(messages, *, tools=[], add_generation_prompt=False, extra_context={}, expect_strings=[]):
+        try:
+            return template.render(messages=messages, tools=tools, add_generation_prompt=add_generation_prompt, **basic_extra_context, **extra_context)
+        except BaseException as e:
+            # print(f"{template_file}: Error rendering template with messages {messages}: {e}", file=sys.stderr, flush=True)
+            return ""
+    
+    caps = TemplateCaps()
+    
+    
+    dummy_str_user_msg = {"role": "user", "content": "Hey" }
+    dummy_typed_user_msg = {"role": "user", "content": [{"type": "text", "text": "Hey"}]}
+    
+    caps.requires_typed_content = \
+        "Hey" not in try_raw_render([dummy_str_user_msg]) \
+        and "Hey" in try_raw_render([dummy_typed_user_msg])
+    dummy_user_msg = dummy_typed_user_msg if caps.requires_typed_content else dummy_str_user_msg
+    
+    needle = "<System Needle>"
+    needle_system_msg = {"role": "system", "content": [{"type": "text", "text": needle}] if caps.requires_typed_content else needle}
+    
+    # caps_.supports_system_role = contains(try_raw_render({needle_system_msg, dummy_user_msg,}, {}, false), needle);
+    caps.supports_system_role = needle in try_raw_render([needle_system_msg, dummy_user_msg])
+    
+    caps.supports_tools = "some_tool" in try_raw_render([dummy_user_msg], tools=[{
+        "type": "function",
+        "function": {
+            "name": "some_tool",
+            "description": "Some tool",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "arg": "string",
+                },
+                "required": ["arg"],
+            },
+        },
+    }])
+    
+    def make_tool_calls_msg(tool_calls):
+        return {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": tool_calls,
+        }
+    def make_tool_call(tool_name, arguments):
+        return {
+            "id": "call_1___",
+            "type": "function",
+            "function": {
+                "arguments": arguments,
+                "name": tool_name,
+            }
+        }
+    
+    dummy_args_obj = {"code": "print('Hello, World!')"}
+
+    tool_call_renders_str_arguments = '{"code":' in try_raw_render([
+        dummy_user_msg,
+        make_tool_calls_msg([make_tool_call("ipython", json.dumps(dummy_args_obj))])
+    ])
+    tool_call_renders_obj_arguments = '{"code":' in try_raw_render([
+        dummy_user_msg,
+        make_tool_calls_msg([make_tool_call("ipython", dummy_args_obj)])
+    ])
+
+    caps.supports_tool_calls = tool_call_renders_str_arguments or tool_call_renders_obj_arguments
+    caps.requires_object_arguments = not tool_call_renders_str_arguments and tool_call_renders_obj_arguments
+
+    if caps.supports_tool_calls:
+        dummy_args = dummy_args_obj if caps.requires_object_arguments else json.dumps(dummy_args_obj)
+        tc1 = make_tool_call("test_tool1", dummy_args)
+        tc2 = make_tool_call("test_tool2", dummy_args)
+        out = try_raw_render([
+            dummy_user_msg,
+            make_tool_calls_msg([tc1, tc2]),
+        ])
+        caps.supports_parallel_tool_calls = "test_tool1" in out and "test_tool2" in out
+        
+        out = try_raw_render([
+            dummy_user_msg,
+            make_tool_calls_msg([tc1]),
+            {
+                "role": "tool",
+                "name": "test_tool1",
+                "content": "Some response!",
+                "tool_call_id": "call_911_",
+            }
+        ])
+        caps.supports_tool_responses = "Some response!" in out
+        caps.supports_tool_call_id = "call_911_" in out
+    
+    return caps
     
 def handle_chat_template(output_folder, model_id, variant, template_src, context_files):
 
@@ -79,6 +194,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
     model_name = model_id.replace("/", "-")
     base_name = f'{model_name}-{variant}' if variant else model_name
     template_file = join_cmake_path(output_folder, f'{base_name}.jinja')
+    caps_file = join_cmake_path(output_folder, f'{base_name}.caps.json')
 
     with open(template_file, 'w') as f:
         f.write(template_src)
@@ -99,86 +215,10 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
     env.globals['raise_exception'] = raise_exception
     env.globals['strftime_now'] = strftime_now
 
-    def renders(messages, *, tools=[], add_generation_prompt=False, extra_context={}, expect_strings=[]):
-        try:
-            prompt = template.render(messages=messages, tools=tools, add_generation_prompt=add_generation_prompt, **extra_context)
-            for str in expect_strings:
-                if str not in prompt:
-                    # print(f"Expected string not found: {str}\nin prompt:\n{prompt}", file=sys.stderr, flush=True)
-                    return False
-            return True
-        except BaseException as e:
-            print(f"{template_file}: Error rendering template with messages {messages}: {e}", file=sys.stderr, flush=True)
-            return False
+    caps = detect_caps(template_file, template)
     
-    basic_extra_context = {
-        "bos_token": "<|startoftext|>",
-        "eos_token": "<|endoftext|>",
-    }
-    
-    # const json dummy_str_user_msg = {{"role", "user"}, {"content", "Hey"}};
-    # const json dummy_typed_user_msg = {{"role", "user"}, {"content", json::array({{{"type", "text"}, {"text", "Hey"}}})}};
-
-    # requires_typed_content_ =
-    #     !contains(try_raw_render({{dummy_str_user_msg}}, {}, false), "Hey")
-    #     && contains(try_raw_render({{dummy_typed_user_msg}}, {}, false), "Hey");
-
-    # const auto dummy_user_msg = requires_typed_content_
-    #     ? dummy_typed_user_msg
-    #     : dummy_str_user_msg;
-    dummy_str_user_msg = {"role": "user", "content": "Hey" }
-    dummy_typed_user_msg = {"role": "user", "content": [{"type": "text", "text": "Hey"}]}
-    
-    requires_typed_content = \
-        not renders([dummy_str_user_msg], extra_context=basic_extra_context, expect_strings=["Hey"]) \
-        and renders([dummy_typed_user_msg], extra_context=basic_extra_context, expect_strings=["Hey"])
-    dummy_user_msg = dummy_typed_user_msg if requires_typed_content else dummy_str_user_msg
-    
-    needle = "<System Needle>"
-    needle_system_msg = {"role": "system", "content": [{"type": "text", "text": needle}] if requires_typed_content else needle}
-    
-    supports_code_interpreter = 'code_interpreter' in template_src
-    supports_parallel_tool_calls = 'tool_call_id' in template_src
-    supports_tool_calls = 'tool_calls' in template_src
-    supports_system_role = renders([needle_system_msg, dummy_user_msg], extra_context=basic_extra_context, expect_strings=[needle])
-    supports_tools = renders([dummy_user_msg], tools=[{
-        "type": "function",
-        "function": {
-            "name": "some_tool",
-            "description": "Some tool",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "arg": "string",
-                },
-                "required": ["arg"],
-            },
-        },
-    }], extra_context=basic_extra_context, expect_strings=["some_tool"])
-    
-    requires_object_arguments = \
-        renders([
-            dummy_user_msg,
-            {"role": "assistant", "content": "", "tool_calls": [{
-            "id": "call_1___",
-            "type": "function",
-            "function": {
-                "arguments": {"code": "print('Hello, World!')"},
-                "name": "ipython"
-            }
-            }]}
-        ], extra_context=basic_extra_context, expect_strings=[r'{"code": "print']) \
-        and not renders([
-            dummy_user_msg,
-            {"role": "assistant", "content": "", "tool_calls": [{
-            "id": "call_1___",
-            "type": "function",
-            "function": {
-                "arguments": "{\"code\": \"print('Hello, World!')\"}",
-                "name": "ipython"
-            }
-            }]}
-        ], extra_context=basic_extra_context, expect_strings=[r'{"code": "print'])
+    with open(caps_file, 'w') as f:
+        f.write(caps.to_json())
     
     for context_file in context_files:
         context_name = os.path.basename(context_file).replace(".json", "")
@@ -186,13 +226,13 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
             context = json.load(f)
 
         has_tools = 'tools' in context
-        needs_tools_in_system = has_tools and not supports_tools
+        needs_tools_in_system = has_tools and not caps.supports_tools
         
-        if not supports_tool_calls and has_tools:
+        if not caps.supports_tool_calls and has_tools:
             print(f'Skipping {context_name} test as tools seem unsupported by template {template_file}', file=sys.stderr)
             continue
         
-        if not supports_system_role and (any(m['role'] == 'system' for m in context['messages']) or needs_tools_in_system):
+        if not caps.supports_system_role and (any(m['role'] == 'system' for m in context['messages']) or needs_tools_in_system):
             continue
 
         output_file = join_cmake_path(output_folder, f'{base_name}-{context_name}.txt')
@@ -203,7 +243,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
         for message in context['messages']:
             if 'tool_calls' in message:
                 for tool_call in message['tool_calls']:
-                    if requires_object_arguments:
+                    if caps.requires_object_arguments:
                         if tool_call.get('type') == 'function':
                             arguments = tool_call['function']['arguments']
                             try:
@@ -211,7 +251,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                             except:
                                 pass
                             tool_call['function']['arguments'] = arguments
-                if not supports_tool_calls:
+                if not caps.supports_tool_calls:
                     message['content'] = json.dumps({
                         "tool_calls": [
                             {
@@ -224,7 +264,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                         "content": None if message.get('content', '') == '' else message['content'],
                     }, indent=2)
                     del message['tool_calls']
-            if message.get('role') == 'tool' and not supports_tools:
+            if message.get('role') == 'tool' and not caps.supports_tools:
                 message['role'] = 'user'
                 message['content'] = json.dumps({
                     "tool_response": {
@@ -235,7 +275,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                 }, indent=2)
                 del message['name']
 
-        if requires_typed_content:
+        if caps.requires_typed_content:
             for message in context['messages']:
                 if 'content' in message and isinstance(message['content'], str):
                     message['content'] = [{"type": "text", "text": message['content']}]
@@ -258,7 +298,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
             f.write(output)
 
         # Output the line of arguments for the C++ test binary
-        print(f"{template_file} {context_file} {output_file}")
+        print(f"{template_file} {caps_file} {context_file} {output_file}")
 
 
 def main():
@@ -301,7 +341,7 @@ def main():
                 for ct in chat_template:
                     handle_chat_template(output_folder, model_id, ct['name'], ct['template'], context_files)
         except Exception as e:
-            logger.error(f"Error processing model {model_id}: {e}")
+            logger.error(f"Error processing model {model_id}: {e}", e)
             handle_chat_template(output_folder, model_id, None, str(e), [])
 
 
