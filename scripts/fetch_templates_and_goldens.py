@@ -264,7 +264,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                         "content": None if message.get('content', '') == '' else message['content'],
                     }, indent=2)
                     del message['tool_calls']
-            if message.get('role') == 'tool' and not caps.supports_tools:
+            if message.get('role') == 'tool' and not caps.supports_tool_responses:
                 message['role'] = 'user'
                 message['content'] = json.dumps({
                     "tool_response": {

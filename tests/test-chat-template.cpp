@@ -102,6 +102,7 @@ int main(int argc, char *argv[]) {
         }
 
         std::cout << "# Testing template: " << tmpl_file << std::endl
+                << "# With caps: " << caps_file << std::endl
                 << "# With context: " << ctx_file << std::endl
                 << "# Against golden file: " << golden_file << std::endl
                 << std::flush;
