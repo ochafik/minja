@@ -17,23 +17,23 @@ using json = nlohmann::ordered_json;
 
 namespace minja {
 
+struct chat_template_caps {
+    bool supports_tools = false;
+    bool supports_tool_calls = false;
+    bool supports_tool_responses = false;
+    bool supports_system_role = false;
+    bool supports_parallel_tool_calls = false;
+    bool supports_tool_call_id = false;
+    // meta-llama/Llama-3.1-8B-Instruct expects arguments to be an object.
+    // Most other templates (and OpenAI's API) expect the arguments object to be stringified.
+    bool requires_object_arguments = false;
+    // CohereForAI/c4ai-command-r-plus simple variant
+    bool requires_non_null_content = false;
+    // MiniMaxAI/MiniMax-Text-01 special
+    bool requires_typed_content = false;
+};
+
 class chat_template {
-  public:
-      struct chat_template_caps {
-        bool supports_tools = false;
-        bool supports_tool_calls = false;
-        bool supports_tool_responses = false;
-        bool supports_system_role = false;
-        bool supports_parallel_tool_calls = false;
-        bool supports_tool_call_id = false;
-        // meta-llama/Llama-3.1-8B-Instruct expects arguments to be an object.
-        // Most other templates (and OpenAI's API) expect the arguments object to be stringified.
-        bool requires_object_arguments = false;
-        // CohereForAI/c4ai-command-r-plus simple variant
-        bool requires_non_null_content = false;
-        // MiniMaxAI/MiniMax-Text-01 special
-        bool requires_typed_content = false;
-    };
 
   private:
     chat_template_caps caps_;

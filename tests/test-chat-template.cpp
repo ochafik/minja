@@ -35,7 +35,7 @@ static void assert_equals(const T &expected, const T &actual){
         std::cerr << "Divergence at index " << i_divergence << "\n\n";
         std::cerr << "Expected suffix: " << expected.substr(i_divergence) << "\n\n";
         std::cerr << "Actual suffix: " << actual.substr(i_divergence) << "\n\n";
-        
+
         std::cerr << std::flush;
         throw std::runtime_error("Test failed");
     }
@@ -55,15 +55,7 @@ static std::string read_file(const std::string &path) {
     return out;
 }
 
-// static void write_file(const std::string &path, const std::string &content) {
-//     std::ofstream fs(path, std::ios_base::binary);
-//     if (!fs.is_open()) {
-//         throw std::runtime_error("Failed to open file: " + path);
-//     }
-//     fs.write(content.c_str(), content.size());
-// }
-
-static json caps_to_json(const minja::chat_template::chat_template_caps &caps) {
+static json caps_to_json(const minja::chat_template_caps &caps) {
     return {
         {"supports_tools", caps.supports_tools},
         {"supports_tool_calls", caps.supports_tool_calls},
@@ -95,7 +87,7 @@ int main(int argc, char *argv[]) {
         std::string golden_file = argv[4];
 
         auto tmpl_str = read_file(tmpl_file);
-        
+
         if (ctx_file == "n/a")
         {
             std::cout << "# Skipping template: " << tmpl_file << "\n" << tmpl_str << std::endl;

@@ -39,7 +39,7 @@ static std::string read_file(const std::string &path)
     return out;
 }
 
-static minja::chat_template::chat_template_caps get_caps(const std::string &path)
+static minja::chat_template_caps get_caps(const std::string &path)
 {
     auto caps = minja::chat_template(read_file(path), "", "").original_caps();
 
