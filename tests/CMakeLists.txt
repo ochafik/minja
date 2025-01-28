@@ -17,6 +17,9 @@ target_link_libraries(test-syntax PRIVATE
     gtest_main
     gmock
 )
+if (NOT CMAKE_CROSSCOMPILING)
+    gtest_discover_tests(test-syntax)
+endif()
 
 add_executable(test-capabilities test-capabilities.cpp)
 target_compile_features(test-capabilities PUBLIC cxx_std_17)
@@ -29,10 +32,8 @@ target_link_libraries(test-capabilities PRIVATE
     gtest_main
     gmock
 )
-if (NOT CMAKE_CROSSCOMPILING)
-    gtest_discover_tests(test-syntax)
-    gtest_discover_tests(test-capabilities)
-endif()
+add_test(NAME test-capabilities COMMAND test-capabilities)
+set_tests_properties(test-capabilities PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
 add_test(NAME test-syntax-jinja2 COMMAND test-syntax)
 set_tests_properties(test-syntax-jinja2 PROPERTIES ENVIRONMENT "USE_JINJA2=1;PYTHON_EXECUTABLE=${Python_EXECUTABLE};PYTHONPATH=${CMAKE_SOURCE_DIR}")
