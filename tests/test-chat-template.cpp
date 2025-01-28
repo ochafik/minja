@@ -55,6 +55,26 @@ static std::string read_file(const std::string &path) {
     return out;
 }
 
+static void write_file(const std::string &path, const std::string &content) {
+    std::ofstream fs(path, std::ios_base::binary);
+    if (!fs.is_open()) {
+        throw std::runtime_error("Failed to open file: " + path);
+    }
+    fs.write(content.c_str(), content.size());
+}
+
+static json caps_to_json(const minja::chat_template::chat_template_caps &caps) {
+    return {
+        {"supports_system_role", caps.supports_system_role},
+        {"supports_tools", caps.supports_tools},
+        {"supports_tool_calls", caps.supports_tool_calls},
+        {"supports_tool_responses", caps.supports_tool_responses},
+        {"supports_parallel_tool_calls", caps.supports_parallel_tool_calls},
+        {"requires_object_arguments", caps.requires_object_arguments},
+        {"requires_typed_content", caps.requires_typed_content},
+    };
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 4)
     {
@@ -70,6 +90,7 @@ int main(int argc, char *argv[]) {
         std::string tmpl_file = argv[1];
         std::string ctx_file = argv[2];
         std::string golden_file = argv[3];
+        auto caps_file = tmpl_file + ".caps.json";
         
         auto tmpl_str = read_file(tmpl_file);
         
@@ -90,6 +111,9 @@ int main(int argc, char *argv[]) {
             tmpl_str,
             ctx.at("bos_token"),
             ctx.at("eos_token"));
+
+        write_file(caps_file, caps_to_json(tmpl.original_caps()).dump(2));
+        std::cout << "# Wrote caps to: " << caps_file << std::endl;
 
         std::string expected;
         try {
