@@ -45,13 +45,18 @@ set(MODEL_IDS
     deepseek-ai/deepseek-coder-33b-instruct
     deepseek-ai/DeepSeek-Coder-V2-Instruct
     deepseek-ai/DeepSeek-V2.5
+    deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+    deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+    deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
     google/gemma-2-2b-it # Gated
     google/gemma-7b-it # Gated
     MiniMaxAI/MiniMax-Text-01
     indischepartij/MiniCPM-3B-OpenHermes-2.5-v2
     mattshumer/Reflection-Llama-3.1-70B
     meetkai/functionary-medium-v3.2
+    meta-llama/Llama-3.1-8B-Instruct # Gated
     meta-llama/Llama-3.2-3B-Instruct # Gated
+    meta-llama/Llama-3.3-70B-Instruct # Gated
     meta-llama/Meta-Llama-3.1-8B-Instruct # Gated
     microsoft/Phi-3-medium-4k-instruct
     microsoft/Phi-3-mini-4k-instruct

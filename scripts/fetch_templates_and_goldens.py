@@ -84,7 +84,7 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
     env.globals['raise_exception'] = raise_exception
     env.globals['strftime_now'] = strftime_now
 
-    template_handles_tools = 'tools' in template_src
+    template_handles_tools = 'tools' in template_src or 'tool_calls' in template_src
     supports_code_interpreter = 'code_interpreter' in template_src
     
 
