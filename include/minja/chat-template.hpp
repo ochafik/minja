@@ -29,6 +29,8 @@ class chat_template {
         // meta-llama/Llama-3.1-8B-Instruct expects arguments to be an object.
         // Most other templates (and OpenAI's API) expect the arguments object to be stringified.
         bool requires_object_arguments = false;
+        // CohereForAI/c4ai-command-r-plus simple variant
+        bool requires_non_null_content = false;
         // MiniMaxAI/MiniMax-Text-01 special
         bool requires_typed_content = false;
     };
@@ -48,14 +50,10 @@ class chat_template {
     {
         try {
             auto prompt = apply(messages, tools, add_generation_prompt, extra_context, /* adjust_inputs= */ false);
-// #ifndef NDEBUG
             // fprintf(stderr, "try_raw_render: %s\n", prompt.c_str());
-// #endif
             return prompt;
         } catch (const std::exception & e) {
-// #ifndef NDEBUG
             // fprintf(stderr, "try_raw_render error: %s\n", e.what());
-// #endif
             return "";
         }
     }
@@ -75,42 +73,48 @@ class chat_template {
             return haystack.find(needle) != std::string::npos;
         };
 
-        const json dummy_str_user_msg = {{"role", "user"}, {"content", "Hey"}};
-        const json dummy_typed_user_msg = {{"role", "user"}, {"content", json::array({{{"type", "text"}, {"text", "Hey"}}})}};
+        const std::string user_needle = "<User Needle>";
+        const std::string sys_needle = "<System Needle>";
+        const json dummy_str_user_msg = {{"role", "user"}, {"content", user_needle}};
+        const json dummy_typed_user_msg = {{"role", "user"}, {"content", json::array({{{"type", "text"}, {"text", user_needle}}})}};
 
         caps_.requires_typed_content =
-            !contains(try_raw_render(json::array({dummy_str_user_msg}), {}, false), "Hey")
-            && contains(try_raw_render(json::array({dummy_typed_user_msg}), {}, false), "Hey");
+            !contains(try_raw_render(json::array({dummy_str_user_msg}), {}, false), user_needle)
+            && contains(try_raw_render(json::array({dummy_typed_user_msg}), {}, false), user_needle);
 
         const auto dummy_user_msg = caps_.requires_typed_content
             ? dummy_typed_user_msg
             : dummy_str_user_msg;
-        const std::string needle = "<System Needle>";
         const json needle_system_msg = {
             {"role", "system"},
-            {"content", caps_.requires_typed_content ? json::array({{{"type", "text"}, {"text", needle}}}) : json(needle)},
+            {"content", caps_.requires_typed_content ? json::array({{{"type", "text"}, {"text", sys_needle}}}) : json(sys_needle)},
         };
 
-        caps_.supports_system_role = contains(try_raw_render({needle_system_msg, dummy_user_msg,}, {}, false), needle);
+        caps_.supports_system_role = contains(try_raw_render({needle_system_msg, dummy_user_msg,}, {}, false), sys_needle);
 
-        caps_.supports_tools =
-            contains(try_raw_render(json::array({
-                dummy_user_msg
-            }), json::array({
-                {
-                    {"type", "function"},
-                    {"function", {
-                        {"name", "some_tool"},
-                        {"parameters", {
-                            {"type", "object"},
-                            {"properties", {
-                                {"arg", "string"},
+        auto out = try_raw_render(json::array({
+            dummy_user_msg
+        }), json::array({
+            {
+                {"name", "some_tool"},
+                {"type", "function"},
+                {"function", {
+                    {"name", "some_tool"},
+                    {"description", "Some tool."},
+                    {"parameters", {
+                        {"type", "object"},
+                        {"properties", {
+                            {"arg", {
+                                {"type", "string"},
+                                {"description", "Some argument."},
                             }},
-                            {"required", json::array({ "arg" })},
                         }},
+                        {"required", json::array({ "arg" })},
                     }},
-                },
-            }), false), "some_tool");
+                }},
+            },
+        }), false);
+        caps_.supports_tools = contains(out, "some_tool");
 
         auto make_tool_calls_msg = [&](const json & tool_calls) {
             return json {
@@ -129,20 +133,25 @@ class chat_template {
                 }},
             };
         };
-        const json dummy_args_obj {{"code", "print('Hello, World!')"}};
+        const json dummy_args_obj {{"argument_needle", "print('Hello, World!')"}};
 
         // Note: the arguments are rendered in both cases, but may be double-escaped, which we don't want.
-        auto tool_call_renders_str_arguments = contains(try_raw_render(json::array({
+        out = try_raw_render(json::array({
             dummy_user_msg,
             make_tool_calls_msg(json::array({make_tool_call("ipython", dummy_args_obj.dump())})),
-        }), {}, false), "{\"code\":");
-        auto tool_call_renders_obj_arguments = contains(try_raw_render(json::array({
+        }), {}, false);
+        auto tool_call_renders_str_arguments = contains(out, "\"argument_needle\":") || contains(out, "'argument_needle':");
+        out = try_raw_render(json::array({
             dummy_user_msg,
             make_tool_calls_msg(json::array({make_tool_call("ipython", dummy_args_obj)})),
-        }), {}, false), "{\"code\":");
+        }), {}, false);
+        auto tool_call_renders_obj_arguments = contains(out, "\"argument_needle\":") || contains(out, "'argument_needle':");
 
         caps_.supports_tool_calls = tool_call_renders_str_arguments || tool_call_renders_obj_arguments;
         caps_.requires_object_arguments = !tool_call_renders_str_arguments && tool_call_renders_obj_arguments;
+        auto out_empty = try_raw_render(json::array({dummy_user_msg, {{"role", "assistant"}, {"content", ""}}}), {}, false);
+        auto out_null = try_raw_render(json::array({dummy_user_msg, {{"role", "assistant"}, {"content", nullptr}}}), {}, false);
+        caps_.requires_non_null_content = contains(out_empty, user_needle) && !contains(out_null, user_needle);
 
         if (caps_.supports_tool_calls) {
             auto dummy_args = caps_.requires_object_arguments ? dummy_args_obj : json(dummy_args_obj.dump());
@@ -329,7 +338,10 @@ class chat_template {
             }
         }
 
-        return template_root_->render(context);
+        auto ret = template_root_->render(context);
+        // fprintf(stderr, "actual_messages: %s\n", actual_messages.dump(2).c_str());
+        // fprintf(stderr, "apply: %s\n\n", ret.c_str());
+        return ret;
     }
 
     static nlohmann::ordered_json add_system(const nlohmann::ordered_json & messages, const std::string & system_prompt) {

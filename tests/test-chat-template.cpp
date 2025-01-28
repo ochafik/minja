@@ -72,6 +72,7 @@ static json caps_to_json(const minja::chat_template::chat_template_caps &caps) {
         {"supports_parallel_tool_calls", caps.supports_parallel_tool_calls},
         {"supports_tool_call_id", caps.supports_tool_call_id},
         {"requires_object_arguments", caps.requires_object_arguments},
+        {"requires_non_null_content", caps.requires_non_null_content},
         {"requires_typed_content", caps.requires_typed_content},
     };
 }
