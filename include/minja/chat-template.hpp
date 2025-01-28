@@ -131,14 +131,15 @@ class chat_template {
         };
         const json dummy_args_obj {{"code", "print('Hello, World!')"}};
 
+        // Note: the arguments are rendered in both cases, but may be double-escaped, which we don't want.
         auto tool_call_renders_str_arguments = contains(try_raw_render(json::array({
             dummy_user_msg,
             make_tool_calls_msg(json::array({make_tool_call("ipython", dummy_args_obj.dump())})),
-        }), {}, false), "Hello, World!");
+        }), {}, false), "{\"code\":");
         auto tool_call_renders_obj_arguments = contains(try_raw_render(json::array({
             dummy_user_msg,
             make_tool_calls_msg(json::array({make_tool_call("ipython", dummy_args_obj)})),
-        }), {}, false), "Hello, World!");
+        }), {}, false), "{\"code\":");
 
         caps_.supports_tool_calls = tool_call_renders_str_arguments || tool_call_renders_obj_arguments;
         caps_.requires_object_arguments = !tool_call_renders_str_arguments && tool_call_renders_obj_arguments;
@@ -152,7 +153,7 @@ class chat_template {
                 make_tool_calls_msg(json::array({tc1, tc2})),
             }), {}, false);
             caps_.supports_parallel_tool_calls = contains(out, "test_tool1") && contains(out, "test_tool2");
-        
+
             out = try_raw_render(json::array({
                 dummy_user_msg,
                 make_tool_calls_msg(json::array({tc1})),
