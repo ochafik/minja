@@ -20,11 +20,12 @@ namespace minja {
 class chat_template {
   public:
       struct chat_template_caps {
-        bool supports_tools = true;
-        bool supports_tool_calls = true;
-        bool supports_tool_responses = true;
-        bool supports_system_role = true;
+        bool supports_tools = false;
+        bool supports_tool_calls = false;
+        bool supports_tool_responses = false;
+        bool supports_system_role = false;
         bool supports_parallel_tool_calls = false;
+        bool supports_tool_call_id = false;
         // meta-llama/Llama-3.1-8B-Instruct expects arguments to be an object.
         // Most other templates (and OpenAI's API) expect the arguments object to be stringified.
         bool requires_object_arguments = false;
@@ -48,13 +49,13 @@ class chat_template {
         try {
             auto prompt = apply(messages, tools, add_generation_prompt, extra_context, /* adjust_inputs= */ false);
 // #ifndef NDEBUG
-//             fprintf(stderr, "try_raw_render: %s\n", prompt.c_str());
+            // fprintf(stderr, "try_raw_render: %s\n", prompt.c_str());
 // #endif
             return prompt;
         } catch (const std::exception & e) {
-#ifndef NDEBUG
-            fprintf(stderr, "try_raw_render error: %s\n", e.what());
-#endif
+// #ifndef NDEBUG
+            // fprintf(stderr, "try_raw_render error: %s\n", e.what());
+// #endif
             return "";
         }
     }
@@ -90,27 +91,6 @@ class chat_template {
             {"content", caps_.requires_typed_content ? json::array({{{"type", "text"}, {"text", needle}}}) : json(needle)},
         };
 
-        const json dummy_tool_call_obj_args {
-            {"id", "call_1___"},
-            {"type", "function"},
-            {"function", {
-                {"arguments", {
-                    {"code", "print('Hello, World!')"},
-                }},
-                {"name", "ipython"},
-            }},
-        };
-        const json dummy_tool_call_str_args {
-            {"id", "call_1___"},
-            {"type", "function"},
-            {"function", {
-                {"arguments", "{\"code\": \"print('Hello, World!')\"}"},
-                {"name", "ipython"},
-            }},
-        };
-
-        caps_.supports_parallel_tool_calls = contains(source, "tool_call_id");
-        caps_.supports_tool_calls = contains(source, "tool_calls");
         caps_.supports_system_role = contains(try_raw_render({needle_system_msg, dummy_user_msg,}, {}, false), needle);
 
         caps_.supports_tools =
@@ -132,37 +112,60 @@ class chat_template {
                 },
             }), false), "some_tool");
 
-        caps_.requires_object_arguments =
-            contains(try_raw_render(json::array({
-                dummy_user_msg,
-                {
-                    {"role", "assistant"},
-                    {"tool_calls", json::array({dummy_tool_call_obj_args})},
-                }
-            }), {}, false), "{\"code\": \"print")
-            && !contains(try_raw_render(json::array({
-                dummy_user_msg,
-                {
-                    {"role", "assistant"},
-                    {"tool_calls", json::array({dummy_tool_call_str_args})},
-                }
-            }), {}, false), "{\"code\": \"print");
-        auto dummy_tool_call = caps_.requires_object_arguments ? dummy_tool_call_obj_args : dummy_tool_call_str_args;
+        auto make_tool_calls_msg = [&](const json & tool_calls) {
+            return json {
+                {"role", "assistant"},
+                {"content", nullptr},
+                {"tool_calls", tool_calls},
+            };
+        };
+        auto make_tool_call = [](const std::string & tool_name, const json & arguments) {
+            return json {
+                {"id", "call_1___"},
+                {"type", "function"},
+                {"function", {
+                    {"arguments", arguments},
+                    {"name", tool_name},
+                }},
+            };
+        };
+        const json dummy_args_obj {{"code", "print('Hello, World!')"}};
 
-        caps_.supports_tool_responses =
-            contains(try_raw_render(json::array({
+        auto tool_call_renders_str_arguments = contains(try_raw_render(json::array({
+            dummy_user_msg,
+            make_tool_calls_msg(json::array({make_tool_call("ipython", dummy_args_obj.dump())})),
+        }), {}, false), "Hello, World!");
+        auto tool_call_renders_obj_arguments = contains(try_raw_render(json::array({
+            dummy_user_msg,
+            make_tool_calls_msg(json::array({make_tool_call("ipython", dummy_args_obj)})),
+        }), {}, false), "Hello, World!");
+
+        caps_.supports_tool_calls = tool_call_renders_str_arguments || tool_call_renders_obj_arguments;
+        caps_.requires_object_arguments = !tool_call_renders_str_arguments && tool_call_renders_obj_arguments;
+
+        if (caps_.supports_tool_calls) {
+            auto dummy_args = caps_.requires_object_arguments ? dummy_args_obj : json(dummy_args_obj.dump());
+            auto tc1 = make_tool_call("test_tool1", dummy_args);
+            auto tc2 = make_tool_call("test_tool2", dummy_args);
+            auto out = try_raw_render(json::array({
                 dummy_user_msg,
-                {
-                    {"role", "assistant"},
-                    {"tool_calls", json::array({dummy_tool_call})},
-                },
+                make_tool_calls_msg(json::array({tc1, tc2})),
+            }), {}, false);
+            caps_.supports_parallel_tool_calls = contains(out, "test_tool1") && contains(out, "test_tool2");
+        
+            out = try_raw_render(json::array({
+                dummy_user_msg,
+                make_tool_calls_msg(json::array({tc1})),
                 {
                     {"role", "tool"},
-                    {"name", "some_tool"},
+                    {"name", "test_tool1"},
                     {"content", "Some response!"},
-                    {"tool_call_id", "call_1___"},
+                    {"tool_call_id", "call_911_"},
                 }
-            }), {}, false), "Some response!");
+            }), {}, false);
+            caps_.supports_tool_responses = contains(out, "Some response!");
+            caps_.supports_tool_call_id = contains(out, "call_911_");
+        }
     }
 
     const std::string & source() const { return source_; }
