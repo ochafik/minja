@@ -46,7 +46,10 @@ static minja::chat_template::chat_template_caps get_caps(const std::string &path
     auto print = [](const std::string &name, bool value) {
         std::cout << "    " << (value ? "EXPECT_TRUE" : "EXPECT_FALSE") << "(caps." << name << ");" << std::endl;
     };
-    std::cout << "{\n    auto caps = get_caps(\"" << path << "\");" << std::endl;
+    auto test_info = ::testing::UnitTest::GetInstance()->current_test_info();
+
+    std::cout << "TEST(" << test_info->test_suite_name() << ", " << test_info->name() << ") {" << std::endl;
+    std::cout << "    auto caps = get_caps(\"" << path << "\");" << std::endl;
     print("supports_system_role",         caps.supports_system_role);
     print("supports_tools",               caps.supports_tools);
     print("supports_tool_calls",          caps.supports_tool_calls);
@@ -54,7 +57,7 @@ static minja::chat_template::chat_template_caps get_caps(const std::string &path
     print("supports_parallel_tool_calls", caps.supports_parallel_tool_calls);
     print("requires_object_arguments",    caps.requires_object_arguments);
     print("requires_typed_content",       caps.requires_typed_content);
-    std::cout << "}" << std::endl;
+    std::cout << "}\n" << std::endl;
 
     return caps;
 }
@@ -77,74 +80,68 @@ TEST(CapabilitiesTest, DeepSeekR1Distill)
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_FALSE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
-    EXPECT_FALSE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_tool_responses);
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
-TEST(CapabilitiesTest, FunctionaryMediumV3_2)
-{
+TEST(CapabilitiesTest, FunctionaryMediumV3_2) {
     auto caps = get_caps("tests/meetkai-functionary-medium-v3.2.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_TRUE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
-    EXPECT_FALSE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_tool_responses);
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
-TEST(CapabilitiesTest, MetaLlama3_1_8BInstruct)
-{
+TEST(CapabilitiesTest, MetaLlama3_1_8BInstruct) {
     auto caps = get_caps("tests/meta-llama-Llama-3.1-8B-Instruct.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_TRUE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
-    EXPECT_FALSE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_tool_responses);
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
-    EXPECT_FALSE(caps.requires_object_arguments);
+    EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
-TEST(CapabilitiesTest, MetaLlama3_2_3BInstruct)
-{
+TEST(CapabilitiesTest, MetaLlama3_2_3BInstruct) {
     auto caps = get_caps("tests/meta-llama-Llama-3.2-3B-Instruct.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_TRUE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
-    EXPECT_FALSE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_tool_responses);
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
-    EXPECT_FALSE(caps.requires_object_arguments);
+    EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
-TEST(CapabilitiesTest, MetaLlama3_3_70BInstruct)
-{
+TEST(CapabilitiesTest, MetaLlama3_3_70BInstruct) {
     auto caps = get_caps("tests/meta-llama-Llama-3.3-70B-Instruct.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_TRUE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
-    EXPECT_FALSE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_tool_responses);
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
-    EXPECT_FALSE(caps.requires_object_arguments);
+    EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
-TEST(CapabilitiesTest, MiniMaxAIText01)
-{
+TEST(CapabilitiesTest, MiniMaxAIText01) {
     auto caps = get_caps("tests/MiniMaxAI-MiniMax-Text-01.jinja");
-    EXPECT_FALSE(caps.supports_system_role);
+    EXPECT_TRUE(caps.supports_system_role);
     EXPECT_FALSE(caps.supports_tools);
     EXPECT_FALSE(caps.supports_tool_calls);
     EXPECT_FALSE(caps.supports_tool_responses);
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_TRUE(caps.requires_typed_content);
 }
 
-TEST(CapabilitiesTest, Mistral7BInstruct)
-{
+TEST(CapabilitiesTest, Mistral7BInstruct) {
     auto caps = get_caps("tests/mistralai-Mistral-7B-Instruct-v0.2.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_FALSE(caps.supports_tools);
@@ -155,37 +152,34 @@ TEST(CapabilitiesTest, Mistral7BInstruct)
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
-TEST(CapabilitiesTest, MistralNemoInstruct)
-{
+TEST(CapabilitiesTest, MistralNemoInstruct) {
     auto caps = get_caps("tests/mistralai-Mistral-Nemo-Instruct-2407.jinja");
     EXPECT_TRUE(caps.supports_system_role);
-    EXPECT_FALSE(caps.supports_tools);
+    EXPECT_TRUE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
-    EXPECT_FALSE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_tool_responses);
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
-    EXPECT_FALSE(caps.requires_object_arguments);
+    EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
-TEST(CapabilitiesTest, NousResearchHermes3Llama3_1_70BToolUse)
-{
+TEST(CapabilitiesTest, NousResearchHermes3Llama3_1_70BToolUse) {
     auto caps = get_caps("tests/NousResearch-Hermes-3-Llama-3.1-70B-tool_use.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_TRUE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
-    EXPECT_FALSE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_tool_responses);
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
-TEST(CapabilitiesTest, NousResearchHermes2ProLlama3_8BToolUse)
-{
+TEST(CapabilitiesTest, NousResearchHermes2ProLlama3_8BToolUse) {
     auto caps = get_caps("tests/NousResearch-Hermes-2-Pro-Llama-3-8B-tool_use.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_TRUE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
-    EXPECT_FALSE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_tool_responses);
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_typed_content);

@@ -78,8 +78,8 @@ class chat_template {
         const json dummy_typed_user_msg = {{"role", "user"}, {"content", json::array({{{"type", "text"}, {"text", "Hey"}}})}};
 
         caps_.requires_typed_content =
-            !contains(try_raw_render({{dummy_str_user_msg}}, {}, false), "Hey")
-            && contains(try_raw_render({{dummy_typed_user_msg}}, {}, false), "Hey");
+            !contains(try_raw_render(json::array({dummy_str_user_msg}), {}, false), "Hey")
+            && contains(try_raw_render(json::array({dummy_typed_user_msg}), {}, false), "Hey");
 
         const auto dummy_user_msg = caps_.requires_typed_content
             ? dummy_typed_user_msg
@@ -114,51 +114,55 @@ class chat_template {
         caps_.supports_system_role = contains(try_raw_render({needle_system_msg, dummy_user_msg,}, {}, false), needle);
 
         caps_.supports_tools =
-            contains(try_raw_render({{dummy_user_msg}}, {{
-                {"type", "function"},
-                {"function", {
-                    {"name", "some_tool"},
-                    {"parameters", {
-                        {"type", "object"},
-                        {"properties", {
-                            {"arg", "string"},
+            contains(try_raw_render(json::array({
+                dummy_user_msg
+            }), json::array({
+                {
+                    {"type", "function"},
+                    {"function", {
+                        {"name", "some_tool"},
+                        {"parameters", {
+                            {"type", "object"},
+                            {"properties", {
+                                {"arg", "string"},
+                            }},
+                            {"required", json::array({ "arg" })},
                         }},
-                        {"required", {{ "arg" }}},
                     }},
-                }},
-            }}, false), "some_tool");
+                },
+            }), false), "some_tool");
 
         caps_.requires_object_arguments =
-            contains(try_raw_render({{
+            contains(try_raw_render(json::array({
                 dummy_user_msg,
                 {
                     {"role", "assistant"},
                     {"tool_calls", json::array({dummy_tool_call_obj_args})},
                 }
-            }}, {}, false), "{\"code\": \"print")
-            && !contains(try_raw_render({
+            }), {}, false), "{\"code\": \"print")
+            && !contains(try_raw_render(json::array({
                 dummy_user_msg,
                 {
                     {"role", "assistant"},
                     {"tool_calls", json::array({dummy_tool_call_str_args})},
                 }
-            }, {}, false), "{\"code\": \"print");
+            }), {}, false), "{\"code\": \"print");
         auto dummy_tool_call = caps_.requires_object_arguments ? dummy_tool_call_obj_args : dummy_tool_call_str_args;
 
         caps_.supports_tool_responses =
-            contains(try_raw_render({{
+            contains(try_raw_render(json::array({
                 dummy_user_msg,
                 {
                     {"role", "assistant"},
                     {"tool_calls", json::array({dummy_tool_call})},
                 },
                 {
-                    {"role", "assistant"},
+                    {"role", "tool"},
                     {"name", "some_tool"},
                     {"content", "Some response!"},
                     {"tool_call_id", "call_1___"},
                 }
-            }}, {}, false), "Some response!");
+            }), {}, false), "Some response!");
     }
 
     const std::string & source() const { return source_; }
