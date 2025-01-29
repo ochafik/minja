@@ -226,10 +226,6 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
     async with aiofiles.open(template_file, 'w') as f:
         await f.write(template_src)
 
-    if not context_files:
-        print(f"{template_file} n/a {template_file}")
-        return
-
     env = jinja2.Environment(
         trim_blocks=True,
         lstrip_blocks=True,
@@ -244,6 +240,10 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
 
     caps = detect_caps(template_file, template)
     
+    if not context_files:
+        print(f"{template_file} {caps_file} n/a {template_file}")
+        return
+
     async with aiofiles.open(caps_file, 'w') as f:
         await f.write(caps.to_json())
     
