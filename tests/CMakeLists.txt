@@ -56,12 +56,6 @@ set(MODEL_IDS
     bofenghuang/vigogne-2-70b-chat
     CohereForAI/c4ai-command-r-plus # Gated
     databricks/dbrx-instruct # Gated
-    deepseek-ai/deepseek-coder-33b-instruct
-    deepseek-ai/DeepSeek-Coder-V2-Instruct
-    deepseek-ai/DeepSeek-V2.5
-    deepseek-ai/DeepSeek-R1-Distill-Llama-8B
-    deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
-    deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
     google/gemma-2-2b-it # Gated
     google/gemma-7b-it # Gated
     MiniMaxAI/MiniMax-Text-01
@@ -99,15 +93,22 @@ set(MODEL_IDS
     TheBloke/FusionNet_34Bx2_MoE-AWQ
 
     # Broken, TODO:
-    # meetkai/functionary-medium-v3.1 # jinja2 expectation is computed w/ wrong escapes
+    # meetkai/functionary-medium-v3.1      # jinja2 expectation is computed w/ wrong escapes
     # fireworks-ai/llama-3-firefunction-v2 # https://github.com/google/minja/issues/7
-    # ai21labs/AI21-Jamba-1.5-Large # https://github.com/google/minja/issues/8
-
-    # Can't find template(s), TODO:
-    # apple/OpenELM-1_1B-Instruct 
-    # dreamgen/WizardLM-2-7B
-    # xai-org/grok-1
+    # ai21labs/AI21-Jamba-1.5-Large        # https://github.com/google/minja/issues/8
 )
+
+if(NOT WIN32)
+    list(APPEND MODEL_IDS
+        # Needs investigation
+        deepseek-ai/deepseek-coder-33b-instruct
+        deepseek-ai/DeepSeek-Coder-V2-Instruct
+        deepseek-ai/DeepSeek-V2.5
+        deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+        deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+        deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+    )
+endif()
 
 # Create one test case for each {template, context} combination
 file(GLOB CONTEXT_FILES "${CMAKE_SOURCE_DIR}/tests/contexts/*.json")
