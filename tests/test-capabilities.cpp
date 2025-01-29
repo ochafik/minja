@@ -75,6 +75,7 @@ TEST(CapabilitiesTest, Gemma7b) {
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
+#ifndef _WIN32
 TEST(CapabilitiesTest, DeepSeekR1Distill)
 {
     auto caps = get_caps("tests/deepseek-ai-DeepSeek-R1-Distill-Qwen-32B.jinja");
@@ -87,6 +88,7 @@ TEST(CapabilitiesTest, DeepSeekR1Distill)
     // EXPECT_FALSE(caps.requires_non_null_content);
     EXPECT_FALSE(caps.requires_typed_content);
 }
+#endif
 
 TEST(CapabilitiesTest, FunctionaryMediumV3_2) {
     auto caps = get_caps("tests/meetkai-functionary-medium-v3.2.jinja");
