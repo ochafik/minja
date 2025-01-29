@@ -23,12 +23,16 @@ import logging
 import datetime
 import os
 import sys
-from huggingface_hub import hf_hub_download
+import asyncio
+import aiofiles
+from huggingface_hub import AsyncInferenceClient
+from huggingface_hub.utils import build_hf_headers
 import json
 import jinja2
 import jinja2.ext
 import re
 import argparse
+import aiohttp
 import shutil
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -84,7 +88,6 @@ class TemplateCaps:
     requires_typed_content: bool = False
     
     def to_json(self):
-        # return json.dumps(self.__dict__, indent=2)
         return json.dumps({
             "supports_tools": self.supports_tools,
             "supports_tool_calls": self.supports_tool_calls,
@@ -98,7 +101,6 @@ class TemplateCaps:
         }, indent=2)
     
 def detect_caps(template_file, template):
-    
     basic_extra_context = {
         "bos_token": "<|startoftext|>",
         "eos_token": "<|endoftext|>",
@@ -114,7 +116,6 @@ def detect_caps(template_file, template):
     
     caps = TemplateCaps()
     
-    
     user_needle = "<User Needle>"
     sys_needle = "<System Needle>"
     dummy_str_user_msg = {"role": "user", "content": user_needle }
@@ -127,7 +128,6 @@ def detect_caps(template_file, template):
     
     needle_system_msg = {"role": "system", "content": [{"type": "text", "text": sys_needle}] if caps.requires_typed_content else sys_needle}
     
-    # caps_.supports_system_role = contains(try_raw_render({needle_system_msg, dummy_user_msg,}, {}, false), needle);
     caps.supports_system_role = sys_needle in try_raw_render([needle_system_msg, dummy_user_msg])
     
     out = try_raw_render([dummy_user_msg], tools=[{
@@ -188,7 +188,6 @@ def detect_caps(template_file, template):
         (user_needle in try_raw_render([dummy_user_msg, {"role": "assistant", "content": ''}])) \
         and (user_needle not in try_raw_render([dummy_user_msg, {"role": "assistant", "content": None}]))
 
-    # raise Exception(f'caps.requires_non_null_content: {caps.requires_non_null_content}, content: {content}, supports_tool_calls: {caps.supports_tool_calls}')
     if caps.supports_tool_calls:
         dummy_args = dummy_args_obj if caps.requires_object_arguments else json.dumps(dummy_args_obj)
         tc1 = make_tool_call("test_tool1", dummy_args)
@@ -214,8 +213,7 @@ def detect_caps(template_file, template):
     
     return caps
     
-def handle_chat_template(output_folder, model_id, variant, template_src, context_files):
-
+async def handle_chat_template(output_folder, model_id, variant, template_src, context_files):
     if '{% generation %}' in template_src:
         print('Removing {% generation %} blocks from template', file=sys.stderr)
         template_src = template_src.replace('{% generation %}', '').replace('{% endgeneration %}', '')
@@ -225,11 +223,8 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
     template_file = join_cmake_path(output_folder, f'{base_name}.jinja')
     caps_file = join_cmake_path(output_folder, f'{base_name}.caps.json')
 
-    with open(template_file, 'w') as f:
-        f.write(template_src)
-    
-    # with open(template_file, 'r') as f:
-    #     template_src = f.read()
+    async with aiofiles.open(template_file, 'w') as f:
+        await f.write(template_src)
 
     if not context_files:
         print(f"{template_file} n/a {template_file}")
@@ -249,13 +244,13 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
 
     caps = detect_caps(template_file, template)
     
-    with open(caps_file, 'w') as f:
-        f.write(caps.to_json())
+    async with aiofiles.open(caps_file, 'w') as f:
+        await f.write(caps.to_json())
     
     for context_file in context_files:
         context_name = os.path.basename(context_file).replace(".json", "")
-        with open(context_file, 'r') as f:
-            context = json.load(f)
+        async with aiofiles.open(context_file, 'r') as f:
+            context = json.loads(await f.read())
 
         has_tools = 'tools' in context
         needs_tools_in_system = has_tools and not caps.supports_tools
@@ -312,7 +307,6 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                 if 'content' in message and isinstance(message['content'], str):
                     message['content'] = [{"type": "text", "text": message['content']}]
 
-        # print(json.dumps(context, indent=2), file=sys.stderr)
         try:
             output = template.render(**context)
         except Exception as e1:
@@ -326,14 +320,47 @@ def handle_chat_template(output_folder, model_id, variant, template_src, context
                 logger.info(f"  ERROR: {e2} (after first error: {e1})")
                 output = f"ERROR: {e2}"
 
-        with open(output_file, 'w') as f:
-            f.write(output)
+        async with aiofiles.open(output_file, 'w') as f:
+            await f.write(output)
 
-        # Output the line of arguments for the C++ test binary
         print(f"{template_file} {caps_file} {context_file} {output_file}")
 
+async def async_hf_download(repo_id: str, filename: str) -> str:
+    headers = build_hf_headers()
+    url = f"https://huggingface.co/{repo_id}/raw/main/{filename}"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            response.raise_for_status()
+            return await response.text()
 
-def main():
+async def process_model(output_folder: str, model_id: str, context_files: list):
+    try:
+        config_str = await async_hf_download(model_id, "tokenizer_config.json")
+        
+        try:
+            config = json.loads(config_str)
+        except json.JSONDecodeError:
+            config = json.loads(re.sub(r'\}([\n\s]*\}[\n\s]*\],[\n\s]*"clean_up_tokenization_spaces")', r'\1', config_str))
+
+        assert 'chat_template' in config, 'No "chat_template" entry in tokenizer_config.json!'
+        chat_template = config['chat_template']
+        if isinstance(chat_template, str):
+            await handle_chat_template(output_folder, model_id, None, chat_template, context_files)
+        else:
+            await asyncio.gather(*[
+                handle_chat_template(output_folder, model_id, ct['name'], ct['template'], context_files)
+                for ct in chat_template
+            ])
+    except Exception as e:
+        logger.error(f"Error processing model {model_id}: {e}")
+        await handle_chat_template(output_folder, model_id, None, str(e), [])
+
+async def async_copy_file(src: str, dst: str):
+    async with aiofiles.open(src, 'rb') as fsrc:
+        async with aiofiles.open(dst, 'wb') as fdst:
+            await fdst.write(await fsrc.read())
+
+async def main():
     parser = argparse.ArgumentParser(description="Generate chat templates and output test arguments.")
     parser.add_argument("output_folder", help="Folder to store all output files")
     parser.add_argument("json_context_files_or_model_ids", nargs="+", help="List of context JSON files or HuggingFace model IDs")
@@ -351,33 +378,17 @@ def main():
     if not os.path.isdir(output_folder):
         os.makedirs(output_folder)
 
-    # Copy context files to the output folder
-    for context_file in context_files:
-        shutil.copy(context_file, output_folder)
+    # Copy context files to the output folder asynchronously
+    await asyncio.gather(*[
+        async_copy_file(context_file, os.path.join(output_folder, os.path.basename(context_file)))
+        for context_file in context_files
+    ])
 
-    for model_id in model_ids:
-        try:
-            with open(hf_hub_download(repo_id=model_id, filename="tokenizer_config.json")) as f:
-                config_str = f.read()
-
-            try:
-                config = json.loads(config_str)
-            except json.JSONDecodeError:
-                config = json.loads(re.sub(r'\}([\n\s]*\}[\n\s]*\],[\n\s]*"clean_up_tokenization_spaces")', r'\1', config_str))
-
-            assert 'chat_template' in config, 'No "chat_template" entry in tokenizer_config.json!'
-            chat_template = config['chat_template']
-            if isinstance(chat_template, str):
-                handle_chat_template(output_folder, model_id, None, chat_template, context_files)
-            else:
-                for ct in chat_template:
-                    # if ct['name'] != 'tool_use':
-                    #     continue
-                    handle_chat_template(output_folder, model_id, ct['name'], ct['template'], context_files)
-        except Exception as e:
-            logger.error(f"Error processing model {model_id}: {e}", e)
-            handle_chat_template(output_folder, model_id, None, str(e), [])
-
+    # Process models concurrently
+    await asyncio.gather(*[
+        process_model(output_folder, model_id, context_files)
+        for model_id in model_ids
+    ])
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
