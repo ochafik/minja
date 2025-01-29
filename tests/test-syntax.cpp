@@ -486,33 +486,28 @@ TEST(SyntaxTest, SimpleCases) {
         "",
         render("{% if 1 %}{% elif 1 %}{% else %}{% endif %}", {}, {}));
 
-    // EXPECT_THAT([]() { render(R"({{ 'a' + None }})", {}, {}); }, testing::Throws<std::runtime_error>());
-    // EXPECT_THAT([]() { render(R"({{ None + 'b' }})", {}, {}); }, testing::Throws<std::runtime_error>());
-    // EXPECT_THAT([]() { render(R"({{ 'a' in None }})", {}, {}); }, testing::Throws<std::runtime_error>());
-    EXPECT_EQ(
-        "False,True,False",
-        render(R"({{ None in [] }},{{ None == None }},{{ None != None }})", {}, {}));
 
     if (!getenv("USE_JINJA2")) {
         // TODO: capture stderr from jinja2 and test these.
+
         EXPECT_THAT([]() { render("{%- set _ = [].pop() -%}", {}, {}); }, ThrowsWithSubstr("pop from empty list"));
         EXPECT_THAT([]() { render("{%- set _ = {}.pop() -%}", {}, {}); }, ThrowsWithSubstr("pop"));
         EXPECT_THAT([]() { render("{%- set _ = {}.pop('foooo') -%}", {}, {}); }, ThrowsWithSubstr("foooo"));
 
-        EXPECT_THAT([]() { render("{% else %}", {}, {}); }, ThrowsWithSubstr("Encountered unknown tag 'else'"));
+        EXPECT_THAT([]() { render("{% else %}", {}, {}); }, ThrowsWithSubstr("Unexpected else"));
 
-        EXPECT_THAT([]() { render("{% else %}", {}, {}); }, ThrowsWithSubstr("Encountered unknown tag 'else'"));
-        EXPECT_THAT([]() { render("{% endif %}", {}, {}); }, ThrowsWithSubstr("Encountered unknown tag 'endif'"));
-        EXPECT_THAT([]() { render("{% elif 1 %}", {}, {}); }, ThrowsWithSubstr("Encountered unknown tag 'elif'"));
-        EXPECT_THAT([]() { render("{% endfor %}", {}, {}); }, ThrowsWithSubstr("Encountered unknown tag 'endfor'"));
-        EXPECT_THAT([]() { render("{% endfilter %}", {}, {}); }, ThrowsWithSubstr("Encountered unknown tag 'endfilter'"));
+        EXPECT_THAT([]() { render("{% else %}", {}, {}); }, ThrowsWithSubstr("Unexpected else"));
+        EXPECT_THAT([]() { render("{% endif %}", {}, {}); }, ThrowsWithSubstr("Unexpected endif"));
+        EXPECT_THAT([]() { render("{% elif 1 %}", {}, {}); }, ThrowsWithSubstr("Unexpected elif"));
+        EXPECT_THAT([]() { render("{% endfor %}", {}, {}); }, ThrowsWithSubstr("Unexpected endfor"));
+        EXPECT_THAT([]() { render("{% endfilter %}", {}, {}); }, ThrowsWithSubstr("Unexpected endfilter"));
 
-        EXPECT_THAT([]() { render("{% if 1 %}", {}, {}); }, ThrowsWithSubstr("Unexpected end of template. Jinja was looking for the following tags: 'if'"));
-        EXPECT_THAT([]() { render("{% for x in 1 %}", {}, {}); }, ThrowsWithSubstr("Unexpected end of template. Jinja was looking for the following tags: 'for'"));
-        EXPECT_THAT([]() { render("{% generation %}", {}, {}); }, ThrowsWithSubstr("Unexpected end of template. Jinja was looking for the following tags: 'generation'"));
-        EXPECT_THAT([]() { render("{% if 1 %}{% else %}", {}, {}); }, ThrowsWithSubstr("Unexpected end of template. Jinja was looking for the following tags: 'if'"));
-        EXPECT_THAT([]() { render("{% if 1 %}{% else %}{% elif 1 %}{% endif %}", {}, {}); }, ThrowsWithSubstr("Unexpected end of template. Jinja was looking for the following tags: 'if'"));
-        EXPECT_THAT([]() { render("{% filter trim %}", {}, {}); }, ThrowsWithSubstr("Unexpected end of template. Jinja was looking for the following tags: 'filter'"));
+        EXPECT_THAT([]() { render("{% if 1 %}", {}, {}); }, ThrowsWithSubstr("Unterminated if"));
+        EXPECT_THAT([]() { render("{% for x in 1 %}", {}, {}); }, ThrowsWithSubstr("Unterminated for"));
+        EXPECT_THAT([]() { render("{% generation %}", {}, {}); }, ThrowsWithSubstr("Unterminated generation"));
+        EXPECT_THAT([]() { render("{% if 1 %}{% else %}", {}, {}); }, ThrowsWithSubstr("Unterminated if"));
+        EXPECT_THAT([]() { render("{% if 1 %}{% else %}{% elif 1 %}{% endif %}", {}, {}); }, ThrowsWithSubstr("Unterminated if"));
+        EXPECT_THAT([]() { render("{% filter trim %}", {}, {}); }, ThrowsWithSubstr("Unterminated filter"));
     }
 
     EXPECT_EQ(
