@@ -21,6 +21,20 @@ if (NOT CMAKE_CROSSCOMPILING)
     gtest_discover_tests(test-syntax)
 endif()
 
+add_executable(test-capabilities test-capabilities.cpp)
+target_compile_features(test-capabilities PUBLIC cxx_std_17)
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    target_compile_definitions(test-capabilities PUBLIC _CRT_SECURE_NO_WARNINGS)
+    target_compile_options(gtest PRIVATE -Wno-language-extension-token)
+endif()
+target_link_libraries(test-capabilities PRIVATE
+    nlohmann_json::nlohmann_json
+    gtest_main
+    gmock
+)
+add_test(NAME test-capabilities COMMAND test-capabilities)
+set_tests_properties(test-capabilities PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
 add_test(NAME test-syntax-jinja2 COMMAND test-syntax)
 set_tests_properties(test-syntax-jinja2 PROPERTIES ENVIRONMENT "USE_JINJA2=1;PYTHON_EXECUTABLE=${Python_EXECUTABLE};PYTHONPATH=${CMAKE_SOURCE_DIR}")
 
@@ -42,16 +56,15 @@ set(MODEL_IDS
     bofenghuang/vigogne-2-70b-chat
     CohereForAI/c4ai-command-r-plus # Gated
     databricks/dbrx-instruct # Gated
-    deepseek-ai/deepseek-coder-33b-instruct
-    deepseek-ai/DeepSeek-Coder-V2-Instruct
-    deepseek-ai/DeepSeek-V2.5
     google/gemma-2-2b-it # Gated
     google/gemma-7b-it # Gated
     MiniMaxAI/MiniMax-Text-01
     indischepartij/MiniCPM-3B-OpenHermes-2.5-v2
     mattshumer/Reflection-Llama-3.1-70B
     meetkai/functionary-medium-v3.2
+    meta-llama/Llama-3.1-8B-Instruct # Gated
     meta-llama/Llama-3.2-3B-Instruct # Gated
+    meta-llama/Llama-3.3-70B-Instruct # Gated
     meta-llama/Meta-Llama-3.1-8B-Instruct # Gated
     microsoft/Phi-3-medium-4k-instruct
     microsoft/Phi-3-mini-4k-instruct
@@ -80,15 +93,22 @@ set(MODEL_IDS
     TheBloke/FusionNet_34Bx2_MoE-AWQ
 
     # Broken, TODO:
-    # meetkai/functionary-medium-v3.1 # jinja2 expectation is computed w/ wrong escapes
+    # meetkai/functionary-medium-v3.1      # jinja2 expectation is computed w/ wrong escapes
     # fireworks-ai/llama-3-firefunction-v2 # https://github.com/google/minja/issues/7
-    # ai21labs/AI21-Jamba-1.5-Large # https://github.com/google/minja/issues/8
-
-    # Can't find template(s), TODO:
-    # apple/OpenELM-1_1B-Instruct 
-    # dreamgen/WizardLM-2-7B
-    # xai-org/grok-1
+    # ai21labs/AI21-Jamba-1.5-Large        # https://github.com/google/minja/issues/8
 )
+
+if(NOT WIN32)
+    list(APPEND MODEL_IDS
+        # Needs investigation
+        deepseek-ai/deepseek-coder-33b-instruct
+        deepseek-ai/DeepSeek-Coder-V2-Instruct
+        deepseek-ai/DeepSeek-V2.5
+        deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+        deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+        deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+    )
+endif()
 
 # Create one test case for each {template, context} combination
 file(GLOB CONTEXT_FILES "${CMAKE_SOURCE_DIR}/tests/contexts/*.json")

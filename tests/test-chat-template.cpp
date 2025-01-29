@@ -23,8 +23,19 @@ using json = nlohmann::ordered_json;
 template <class T>
 static void assert_equals(const T &expected, const T &actual){
     if (expected != actual) {
-        std::cerr << "Expected: " << expected << std::endl;
-        std::cerr << "Actual: " << actual << std::endl;
+        std::cerr << "Expected: " << expected << "\n\n";
+        std::cerr << "Actual: " << actual << "\n\n";
+        auto i_divergence = std::min(expected.size(), actual.size());
+        for (size_t i = 0; i < i_divergence; i++) {
+            if (expected[i] != actual[i]) {
+                i_divergence = i;
+                break;
+            }
+        }
+        std::cerr << "Divergence at index " << i_divergence << "\n\n";
+        std::cerr << "Expected suffix: " << expected.substr(i_divergence) << "\n\n";
+        std::cerr << "Actual suffix: " << actual.substr(i_divergence) << "\n\n";
+
         std::cerr << std::flush;
         throw std::runtime_error("Test failed");
     }
@@ -44,10 +55,26 @@ static std::string read_file(const std::string &path) {
     return out;
 }
 
+#ifndef _WIN32
+static json caps_to_json(const minja::chat_template_caps &caps) {
+    return {
+        {"supports_tools", caps.supports_tools},
+        {"supports_tool_calls", caps.supports_tool_calls},
+        {"supports_tool_responses", caps.supports_tool_responses},
+        {"supports_system_role", caps.supports_system_role},
+        {"supports_parallel_tool_calls", caps.supports_parallel_tool_calls},
+        {"supports_tool_call_id", caps.supports_tool_call_id},
+        {"requires_object_arguments", caps.requires_object_arguments},
+        // {"requires_non_null_content", caps.requires_non_null_content},
+        {"requires_typed_content", caps.requires_typed_content},
+    };
+}
+#endif
+
 int main(int argc, char *argv[]) {
-    if (argc != 4)
+    if (argc != 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <template_file.jinja> <context_file.json> <golden_file.txt>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <template_file.jinja> <template_file.jinja.caps.json> <context_file.json> <golden_file.txt>" << std::endl;
         for (int i = 0; i < argc; i++)
         {
             std::cerr << "argv[" << i << "] = " << argv[i] << std::endl;
@@ -57,11 +84,12 @@ int main(int argc, char *argv[]) {
 
     try {
         std::string tmpl_file = argv[1];
-        std::string ctx_file = argv[2];
-        std::string golden_file = argv[3];
-        
+        std::string caps_file = argv[2];
+        std::string ctx_file = argv[3];
+        std::string golden_file = argv[4];
+
         auto tmpl_str = read_file(tmpl_file);
-        
+
         if (ctx_file == "n/a")
         {
             std::cout << "# Skipping template: " << tmpl_file << "\n" << tmpl_str << std::endl;
@@ -69,6 +97,7 @@ int main(int argc, char *argv[]) {
         }
 
         std::cout << "# Testing template: " << tmpl_file << std::endl
+                << "# With caps: " << caps_file << std::endl
                 << "# With context: " << ctx_file << std::endl
                 << "# Against golden file: " << golden_file << std::endl
                 << std::flush;
@@ -104,6 +133,15 @@ int main(int argc, char *argv[]) {
         }
 
         assert_equals(expected, actual);
+
+        // Some unresolved CRLF issues again with the goldens on Windows.
+#ifndef _WIN32
+        // Checks that the Python & C++ capability detection codes are in sync.
+        auto expected_caps = minja::normalize_newlines(read_file(caps_file));
+        auto caps = caps_to_json(tmpl.original_caps()).dump(2);
+        assert_equals(expected_caps, caps);
+#endif
+
         std::cout << "Test passed successfully." << std::endl;
         return 0;
     } catch (const std::exception &e) {

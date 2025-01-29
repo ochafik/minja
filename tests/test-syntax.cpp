@@ -73,9 +73,6 @@ TEST(SyntaxTest, SimpleCases) {
     auto ThrowsWithSubstr = [](const std::string & expected_substr) {
         return testing::Throws<std::runtime_error>(Property(&std::runtime_error::what, testing::HasSubstr(expected_substr)));
     };
-    // EXPECT_EQ(
-    //     "\r\nhey\r\nho!",
-    //     render("\r\n{{ 'hey\r\nho!' }}\r\n", {}, {}));
     EXPECT_EQ(
         "    b",
         render(R"(  {% set _ = 1 %}    {% set _ = 2 %}b)", {}, lstrip_trim_blocks));
@@ -452,6 +449,11 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         "a",
         render("{{ ' a  ' | trim }}", {}, {}));
+    if (!getenv("USE_JINJA2")) {
+        EXPECT_EQ(
+            "",
+            render(R"({{ None | trim }})", {}, {}));
+    }
     EXPECT_EQ(
         "[0, 1, 2][4, 5, 6][0, 2, 4, 6, 8]",
         render("{{ range(3) | list }}{{ range(4, 7) | list }}{{ range(0, 10, 2) | list }}", {}, {}));
