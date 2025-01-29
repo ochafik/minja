@@ -55,6 +55,7 @@ static std::string read_file(const std::string &path) {
     return out;
 }
 
+#ifndef _WIN32
 static json caps_to_json(const minja::chat_template_caps &caps) {
     return {
         {"supports_tools", caps.supports_tools},
@@ -68,6 +69,7 @@ static json caps_to_json(const minja::chat_template_caps &caps) {
         {"requires_typed_content", caps.requires_typed_content},
     };
 }
+#endif
 
 int main(int argc, char *argv[]) {
     if (argc != 5)
