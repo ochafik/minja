@@ -628,7 +628,7 @@ class Context : public std::enable_shared_from_this<Context> {
         if (parent_) return parent_->contains(key);
         return false;
     }
-    virtual void set(const Value & key, Value & value) {
+    virtual void set(const Value & key, const Value & value) {
         values_.set(key, value);
     }
 };
