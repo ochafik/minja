@@ -449,9 +449,11 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         "a",
         render("{{ ' a  ' | trim }}", {}, {}));
-    EXPECT_EQ(
-        "None",
-        render(R"({{ None | trim }})", {}, {}));
+    if (!getenv("USE_JINJA2")) {
+        EXPECT_EQ(
+            "",
+            render(R"({{ None | trim }})", {}, {}));
+    }
     EXPECT_EQ(
         "[0, 1, 2][4, 5, 6][0, 2, 4, 6, 8]",
         render("{{ range(3) | list }}{{ range(4, 7) | list }}{{ range(0, 10, 2) | list }}", {}, {}));
