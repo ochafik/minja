@@ -55,7 +55,6 @@ set(MODEL_IDS
     abacusai/Fewshot-Metamath-OrcaVicuna-Mistral
     bofenghuang/vigogne-2-70b-chat
     CohereForAI/c4ai-command-r-plus # Gated
-    CohereForAI/c4ai-command-r7b-12-2024 # Gated
     databricks/dbrx-instruct # Gated
     google/gemma-2-2b-it # Gated
     google/gemma-7b-it # Gated
@@ -101,7 +100,8 @@ set(MODEL_IDS
 
 if(NOT WIN32)
     list(APPEND MODEL_IDS
-        # Needs investigation
+        # Needs investigation (https://github.com/google/minja/issues/40)
+        CohereForAI/c4ai-command-r7b-12-2024 # Gated
         deepseek-ai/deepseek-coder-33b-instruct
         deepseek-ai/DeepSeek-Coder-V2-Instruct
         deepseek-ai/DeepSeek-V2.5
