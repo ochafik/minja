@@ -55,6 +55,7 @@ set(MODEL_IDS
     abacusai/Fewshot-Metamath-OrcaVicuna-Mistral
     bofenghuang/vigogne-2-70b-chat
     CohereForAI/c4ai-command-r-plus # Gated
+    CohereForAI/c4ai-command-r7b-12-2024 # Gated
     databricks/dbrx-instruct # Gated
     google/gemma-2-2b-it # Gated
     google/gemma-7b-it # Gated
