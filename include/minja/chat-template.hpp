@@ -33,6 +33,17 @@ struct chat_template_caps {
     bool requires_typed_content = false;
 };
 
+struct chat_template_inputs {
+    nlohmann::ordered_json messages;
+    nlohmann::ordered_json tools;
+    bool add_generation_prompt;
+    nlohmann::ordered_json extra_context;
+    // Epoch time in milliseconds.
+    uint64_t now;
+    // Timezone offset in minutes.
+    int64_t timezone_offset;
+};
+
 class chat_template {
 
   private:
@@ -49,7 +60,15 @@ class chat_template {
         const nlohmann::ordered_json & extra_context = nlohmann::ordered_json()) const
     {
         try {
-            auto prompt = apply(messages, tools, add_generation_prompt, extra_context, /* adjust_inputs= */ false);
+            chat_template_inputs inputs {
+                messages,
+                tools,
+                add_generation_prompt,
+                extra_context,
+                /* now= */ 0,
+                /* timezone_offset= */ 0,
+            };
+            auto prompt = apply(inputs, /* adjust_inputs= */ false);
             // fprintf(stderr, "try_raw_render: %s\n", prompt.c_str());
             return prompt;
         } catch (const std::exception & e) {
@@ -184,10 +203,11 @@ class chat_template {
     const chat_template_caps & original_caps() const { return caps_; }
 
     std::string apply(
-        const nlohmann::ordered_json & messages,
-        const nlohmann::ordered_json & tools,
-        bool add_generation_prompt,
-        const nlohmann::ordered_json & extra_context = nlohmann::ordered_json(),
+        const chat_template_inputs & inputs,
+        // const nlohmann::ordered_json & messages,
+        // const nlohmann::ordered_json & tools,
+        // bool add_generation_prompt,
+        // const nlohmann::ordered_json & extra_context = nlohmann::ordered_json(),
         bool adjust_inputs = true) const
     {
         json actual_messages;
@@ -227,9 +247,9 @@ class chat_template {
                     pending_system.clear();
                 }
             };
-            auto needs_tools_in_system = !tools.is_null() && tools.size() > 0 && !caps_.supports_tools;
+            auto needs_tools_in_system = !inputs.tools.is_null() && inputs.tools.size() > 0 && !caps_.supports_tools;
 
-            for (const auto & message_ : needs_tools_in_system ? add_system(messages, "Available tools: " + tools.dump(2)) : messages) {
+            for (const auto & message_ : needs_tools_in_system ? add_system(inputs.messages, "Available tools: " + inputs.tools.dump(2)) : inputs.messages) {
                 auto message = message_;
                 if (!message.contains("role") || !message.contains("content")) {
                     throw std::runtime_error("message must have 'role' and 'content' fields: " + message.dump());
@@ -319,22 +339,27 @@ class chat_template {
                 flush_sys();
             }
         } else {
-            actual_messages = messages;
+            actual_messages = inputs.messages;
         }
 
         auto context = minja::Context::make(json({
             {"messages", actual_messages},
-            {"add_generation_prompt", add_generation_prompt},
+            {"add_generation_prompt", inputs.add_generation_prompt},
             {"bos_token", bos_token_},
             {"eos_token", eos_token_},
+            // {"strftime_now", Value::callable([=](const std::shared_ptr<minja::Context> & context, minja::ArgumentsValue & args) {
+            //     args.expectArgs("strftime_now", {1, 1}, {0, 0});
+            //     auto format = args.args[0].get<std::string>();
+            //     return Value(std::to_string(inputs.now));
+            // })},
         }));
 
-        if (!tools.is_null()) {
-            auto tools_val = minja::Value(tools);
+        if (!inputs.tools.is_null()) {
+            auto tools_val = minja::Value(inputs.tools);
             context->set("tools", tools_val);
         }
-        if (!extra_context.is_null()) {
-            for (auto & kv : extra_context.items()) {
+        if (!inputs.extra_context.is_null()) {
+            for (auto & kv : inputs.extra_context.items()) {
                 minja::Value val(kv.value());
                 context->set(kv.key(), val);
             }

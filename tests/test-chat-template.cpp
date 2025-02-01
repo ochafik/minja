@@ -118,15 +118,20 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
+        struct minja::chat_template_inputs inputs;
+        inputs.messages = ctx.at("messages");
+        inputs.tools = ctx.contains("tools") ? ctx.at("tools") : json();
+        inputs.add_generation_prompt = ctx.at("add_generation_prompt");
+        if (ctx.contains("tools")) {
+            inputs.extra_context = json {
+                {"builtin_tools", {
+                    {"wolfram_alpha", "brave_search"}
+                }},
+            };
+        }
         std::string actual;
         try {
-            actual = tmpl.apply(
-                ctx.at("messages"),
-                ctx.contains("tools") ? ctx.at("tools") : json(),
-                ctx.at("add_generation_prompt"),
-                ctx.contains("tools") ? json{
-                                            {"builtin_tools", {"wolfram_alpha", "brave_search"}}}
-                                    : json());
+            actual = tmpl.apply(inputs);
         } catch (const std::exception &e) {
             std::cerr << "Error applying template: " << e.what() << std::endl;
             return 1;
