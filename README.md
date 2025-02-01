@@ -111,7 +111,7 @@ Main limitations (non-exhaustive list):
 ## Roadmap / TODOs
 
 - [x] Fix known issues w/ CRLF on Windows
-- [ ] Integrate to llama.cpp: https://github.com/ggerganov/llama.cpp/pull/11016 + https://github.com/ggerganov/llama.cpp/pull/9639
+- [x] Integrate to llama.cpp: https://github.com/ggerganov/llama.cpp/pull/11016 + https://github.com/ggerganov/llama.cpp/pull/9639
 - Improve fuzzing coverage:
     - use thirdparty jinja grammar to guide exploration of inputs (or implement prettification of internal ASTs and use them to generate arbitrary values)
     - fuzz each filter / test
