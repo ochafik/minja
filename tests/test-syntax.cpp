@@ -73,6 +73,7 @@ TEST(SyntaxTest, SimpleCases) {
     auto ThrowsWithSubstr = [](const std::string & expected_substr) {
         return testing::Throws<std::runtime_error>(Property(&std::runtime_error::what, testing::HasSubstr(expected_substr)));
     };
+
     EXPECT_EQ(
         "    b",
         render(R"(  {% set _ = 1 %}    {% set _ = 2 %}b)", {}, lstrip_trim_blocks));
@@ -486,9 +487,18 @@ TEST(SyntaxTest, SimpleCases) {
         "",
         render("{% if 1 %}{% elif 1 %}{% else %}{% endif %}", {}, {}));
 
+    EXPECT_EQ(
+        "0,1,2,",
+        render("{% for i in range(10) %}{{ i }},{% if i == 2 %}{% break %}{% endif %}{% endfor %}", {}, {}));
+    EXPECT_EQ(
+        "0,2,4,6,8,",
+        render("{% for i in range(10) %}{% if i % 2 %}{% continue %}{% endif %}{{ i }},{% endfor %}", {}, {}));
 
     if (!getenv("USE_JINJA2")) {
         // TODO: capture stderr from jinja2 and test these.
+
+        EXPECT_THAT([]() { render("{% break %}", {}, {}); }, ThrowsWithSubstr("break outside of a loop"));
+        EXPECT_THAT([]() { render("{% continue %}", {}, {}); }, ThrowsWithSubstr("continue outside of a loop"));
 
         EXPECT_THAT([]() { render("{%- set _ = [].pop() -%}", {}, {}); }, ThrowsWithSubstr("pop from empty list"));
         EXPECT_THAT([]() { render("{%- set _ = {}.pop() -%}", {}, {}); }, ThrowsWithSubstr("pop"));
