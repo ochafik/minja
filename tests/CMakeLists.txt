@@ -39,9 +39,9 @@ add_test(NAME test-syntax-jinja2 COMMAND test-syntax)
 set_tests_properties(test-syntax-jinja2 PROPERTIES ENVIRONMENT "USE_JINJA2=1;PYTHON_EXECUTABLE=${Python_EXECUTABLE};PYTHONPATH=${CMAKE_SOURCE_DIR}")
 
 
-add_executable(test-chat-template test-chat-template.cpp)
-target_compile_features(test-chat-template PUBLIC cxx_std_17)
-target_link_libraries(test-chat-template PRIVATE nlohmann_json::nlohmann_json)
+add_executable(test-supported-template test-supported-template.cpp)
+target_compile_features(test-supported-template PUBLIC cxx_std_17)
+target_link_libraries(test-supported-template PRIVATE nlohmann_json::nlohmann_json)
 
 set(MODEL_IDS
     # List of model IDs to test the chat template of.
@@ -133,7 +133,7 @@ foreach(test_case ${CHAT_TEMPLATE_TEST_CASES})
     separate_arguments(test_args UNIX_COMMAND "${test_case}")
     list(GET test_args -1 last_arg)
     string(REGEX REPLACE "^[^ ]+/([^ /\\]+)\\.[^.]+$" "\\1" test_name "${last_arg}")
-    add_test(NAME ${test_name} COMMAND $<TARGET_FILE:test-chat-template> ${test_args})
+    add_test(NAME ${test_name} COMMAND $<TARGET_FILE:test-supported-template> ${test_args})
     set_tests_properties(${test_name} PROPERTIES SKIP_RETURN_CODE 127)
 endforeach()
 

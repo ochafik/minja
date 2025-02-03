@@ -55,6 +55,14 @@ static std::string read_file(const std::string &path) {
     return out;
 }
 
+static void write_file(const std::string &path, const std::string &content) {
+    std::ofstream fs(path, std::ios_base::binary);
+    if (!fs.is_open()) {
+        throw std::runtime_error("Failed to open file: " + path);
+    }
+    fs.write(content.data(), content.size());
+}
+
 #ifndef _WIN32
 static json caps_to_json(const minja::chat_template_caps &caps) {
     return {
@@ -132,7 +140,14 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        assert_equals(expected, actual);
+        if (expected != actual) {
+            if (getenv("WRITE_GOLDENS")) {
+                write_file(golden_file, actual);
+                std::cerr << "Updated golden file: " << golden_file << std::endl;
+            } else {
+                assert_equals(expected, actual);
+            }
+        }
 
         // Some unresolved CRLF issues again with the goldens on Windows.
 #ifndef _WIN32
