@@ -231,7 +231,7 @@ class chat_template {
                 inputs.messages = json::array({user_msg});
                 inputs.add_generation_prompt = true;
                 auto prefix = apply(inputs);
-                
+
                 inputs.messages.push_back(tool_call_msg);
                 inputs.add_generation_prompt = false;
                 auto full = apply(inputs);
