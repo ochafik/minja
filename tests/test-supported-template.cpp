@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
         if (ctx.contains("tools")) {
             inputs.extra_context = json {
                 {"builtin_tools", {
-                    {"wolfram_alpha", "brave_search"}
+                    json::array({"wolfram_alpha", "brave_search"})
                 }},
             };
         }

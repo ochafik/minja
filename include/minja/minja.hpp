@@ -2695,6 +2695,10 @@ inline std::shared_ptr<Context> Context::builtins() {
     return Value::callable([=](const std::shared_ptr<Context> & context, ArgumentsValue & args) {
       args.expectArgs(is_select ? "select" : "reject", {2, (std::numeric_limits<size_t>::max)()}, {0, 0});
       auto & items = args.args[0];
+      if (items.is_null())
+        return Value::array();
+      if (!items.is_array()) throw std::runtime_error("object is not iterable: " + items.dump());
+
       auto filter_fn = context->get(args.args[1]);
       if (filter_fn.is_null()) throw std::runtime_error("Undefined filter: " + args.args[1].dump());
 
@@ -2772,6 +2776,7 @@ inline std::shared_ptr<Context> Context::builtins() {
       auto & items = args.args[0];
       if (items.is_null())
         return Value::array();
+      if (!items.is_array()) throw std::runtime_error("object is not iterable: " + items.dump());
       auto attr_name = args.args[1].get<std::string>();
 
       bool has_test = false;
