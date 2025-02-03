@@ -157,7 +157,7 @@ Main limitations (non-exhaustive list):
         huggingface-cli login
         ```
 
-- Build & run tests (shorthand: `./scripts/run_tests.sh`):
+- Build & run tests (shorthand: `./scripts/tests.sh`):
 
     ```bash
     rm -fR build && \
@@ -195,7 +195,7 @@ Main limitations (non-exhaustive list):
     - Build in [fuzzing mode](https://github.com/google/fuzztest/blob/main/doc/quickstart-cmake.md#fuzzing-mode) & run all fuzzing tests (optionally, set a higher `TIMEOUT` as env var):
 
         ```bash
-        ./scripts/run_fuzzing_mode.sh
+        ./scripts/fuzzing_tests.sh
         ```
 
 - If your model's template doesn't run fine, please consider the following before [opening a bug](https://github.com/googlestaging/minja/issues/new):
