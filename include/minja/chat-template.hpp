@@ -218,6 +218,9 @@ class chat_template {
                     {"role", "user"},
                     {"content", "Hey"},
                 };
+                const json args {
+                    {"arg1", "some_value"},
+                };
                 const json tool_call_msg {
                     {"role", "assistant"},
                     {"content", nullptr},
@@ -228,9 +231,7 @@ class chat_template {
                             {"type", "function"},
                             {"function", {
                                 {"name", "tool_name"},
-                                {"arguments", (json {
-                                    {"arg1", "some_value"},
-                                }).dump()},
+                                {"arguments", (caps_.requires_object_arguments ? args : json(minja::Value(args).dump(-1, /* to_json= */ true)))},
                             }},
                         },
                     })},
@@ -339,7 +340,7 @@ class chat_template {
             json adjusted_messages;
             if (polyfill_tools) {
                 adjusted_messages = add_system(inputs.messages,
-                    "You can call any of the following tools to satisfy the user's requests: " + inputs.tools.dump(2) +
+                    "You can call any of the following tools to satisfy the user's requests: " + minja::Value(inputs.tools).dump(2, /* to_json= */ true) +
                     (!polyfill_tool_call_example || tool_call_example_.empty() ? "" : "\n\nExample tool call syntax:\n\n" + tool_call_example_));
             } else {
                 adjusted_messages = inputs.messages;

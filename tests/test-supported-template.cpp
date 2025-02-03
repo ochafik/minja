@@ -142,13 +142,9 @@ int main(int argc, char *argv[]) {
             };
         }
 
-        minja::chat_template_options opts;
-        // TODO: implement logic for examples in python
-        opts.polyfill_tool_call_examples = false;
-
         std::string actual;
         try {
-            actual = tmpl.apply(inputs, opts);
+            actual = tmpl.apply(inputs);
         } catch (const std::exception &e) {
             std::cerr << "Error applying template: " << e.what() << std::endl;
             return 1;

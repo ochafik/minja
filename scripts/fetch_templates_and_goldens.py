@@ -86,7 +86,7 @@ class TemplateCaps:
     requires_object_arguments: bool = False
     requires_non_null_content: bool = False
     requires_typed_content: bool = False
-    
+
     def to_json(self):
         return json.dumps({
             "supports_tools": self.supports_tools,
@@ -108,7 +108,7 @@ class chat_template:
             "bos_token": "<|startoftext|>",
             "eos_token": "<|endoftext|>",
         }
-        
+
         try:
             out = self.template.render(messages=messages, tools=tools, add_generation_prompt=add_generation_prompt, **basic_extra_context, **extra_context)
             # print(out, file=sys.stderr)
@@ -117,7 +117,7 @@ class chat_template:
             # print(f"{template_file}: Error rendering template with messages {messages}: {e}", file=sys.stderr, flush=True)
             return ""
 
-    def __init__(self, template, env=None):
+    def __init__(self, template, known_eos_tokens, env=None):
         if not env:
             env = jinja2.Environment(
                 trim_blocks=True,
@@ -128,21 +128,21 @@ class chat_template:
         self.template = env.from_string(template)
 
         caps = TemplateCaps()
-        
+
         user_needle = "<User Needle>"
         sys_needle = "<System Needle>"
         dummy_str_user_msg = {"role": "user", "content": user_needle }
         dummy_typed_user_msg = {"role": "user", "content": [{"type": "text", "text": user_needle}]}
-        
+
         caps.requires_typed_content = \
             (user_needle not in self.try_raw_render([dummy_str_user_msg])) \
             and (user_needle in self.try_raw_render([dummy_typed_user_msg]))
         dummy_user_msg = dummy_typed_user_msg if caps.requires_typed_content else dummy_str_user_msg
-        
+
         needle_system_msg = {"role": "system", "content": [{"type": "text", "text": sys_needle}] if caps.requires_typed_content else sys_needle}
-        
+
         caps.supports_system_role = sys_needle in self.try_raw_render([needle_system_msg, dummy_user_msg])
-        
+
         out = self.try_raw_render([dummy_user_msg], tools=[{
             "name": "some_tool",
             "type": "function",
@@ -162,7 +162,7 @@ class chat_template:
             },
         }])
         caps.supports_tools = "some_tool" in out
-        
+
         def make_tool_calls_msg(tool_calls, content=None):
             return {
                 "role": "assistant",
@@ -178,7 +178,7 @@ class chat_template:
                     "name": tool_name,
                 }
             }
-        
+
         dummy_args_obj = {"argument_needle": "print('Hello, World!')"}
 
         out = self.try_raw_render([
@@ -191,10 +191,10 @@ class chat_template:
             make_tool_calls_msg([make_tool_call("ipython", dummy_args_obj)]),
         ])
         tool_call_renders_obj_arguments = '"argument_needle":' in out or "'argument_needle':" in out
-            
+
         caps.supports_tool_calls = tool_call_renders_str_arguments or tool_call_renders_obj_arguments
         caps.requires_object_arguments = not tool_call_renders_str_arguments and tool_call_renders_obj_arguments
-        
+
         caps.requires_non_null_content = \
             (user_needle in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": ''}])) \
             and (user_needle not in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": None}]))
@@ -208,7 +208,7 @@ class chat_template:
                 make_tool_calls_msg([tc1, tc2]),
             ])
             caps.supports_parallel_tool_calls = "test_tool1" in out and "test_tool2" in out
-            
+
             out = self.try_raw_render([
                 dummy_user_msg,
                 make_tool_calls_msg([tc1]),
@@ -221,9 +221,42 @@ class chat_template:
             ])
             caps.supports_tool_responses = "Some response!" in out
             caps.supports_tool_call_id = "call_911_" in out
-        
+
+        self.tool_call_example = None
+        try:
+            if not caps.supports_tools:
+                user_msg = {"role": "user", "content": "Hey"}
+                args = {"arg1": "some_value"}
+                tool_call_msg = {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": "call_1___",
+                            "type": "function",
+                            "function": {
+                                "name": "tool_name",
+                                "arguments": args if caps.requires_object_arguments else json.dumps(args),
+                            },
+                        },
+                    ],
+                }
+                prefix = self.try_raw_render([user_msg], add_generation_prompt=True)
+                full = self.try_raw_render([user_msg, tool_call_msg], add_generation_prompt=False)
+                if not full.startswith(prefix):
+                    for known_eos_token in known_eos_tokens:
+                        prefix = prefix.rstrip()
+                        if prefix.endswith(known_eos_token):
+                            prefix = prefix[:-len(known_eos_token)]
+                            break
+                if not full.startswith(prefix):
+                    print("Failed to infer a tool call example (possible template bug)", file=sys.stderr)
+                self.tool_call_example = full[len(prefix):]
+        except Exception as e:
+            print(f"Failed to generate tool call example: {e}", file=sys.stderr)
+
         self.original_caps = caps
-        
+
     def needs_polyfills(self, context):
         has_tools = context.get('tools') is not None
         caps = self.original_caps
@@ -237,13 +270,15 @@ class chat_template:
             or caps.requires_typed_content
 
     def apply(self, context):
-        
+
         caps = self.original_caps
         has_tools = 'tools' in context
 
         if self.needs_polyfills(context):
             if has_tools and not caps.supports_tools:
-                add_system(context['messages'], f"You can call any of the following tools to satisfy the user's requests: {json.dumps(context['tools'], indent=2)}")
+                add_system(context['messages'],
+                    f"You can call any of the following tools to satisfy the user's requests: {json.dumps(context['tools'], indent=2)}" +
+                    ("\n\nExample tool call syntax:\n\n" + self.tool_call_example if self.tool_call_example is not None else ""))
 
             for message in context['messages']:
                 if 'tool_calls' in message:
@@ -299,7 +334,7 @@ class chat_template:
                 return f"ERROR: {e2}"
 
 
-        
+
 
 async def handle_chat_template(output_folder, model_id, variant, template_src, context_files):
     if '{% generation %}' in template_src:
@@ -315,21 +350,30 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
     async with aiofiles.open(template_file, 'w') as f:
         await f.write(template_src)
 
-    template = chat_template(template_src)
+    known_eos_tokens = [
+        "<|END_OF_TURN_TOKEN|>",
+        "<end_of_turn>",
+        "</s>",
+        "<|im_end|>",
+        "<|eom_id|>",
+        "<|eot_id|>",
+        "<｜end▁of▁sentence｜>",
+    ]
+
+    template = chat_template(template_src, known_eos_tokens)
     template.env.filters['safe'] = lambda x: x
     template.env.filters['tojson'] = tojson
     template.env.globals['raise_exception'] = raise_exception
     template.env.globals['strftime_now'] = strftime_now
-
     caps = template.original_caps
-    
+
     if not context_files:
         print(f"{template_file} {caps_file} n/a {template_file}")
         return
 
     async with aiofiles.open(caps_file, 'w') as f:
         await f.write(caps.to_json())
-    
+
     for context_file in context_files:
         context_name = os.path.basename(context_file).replace(".json", "")
         async with aiofiles.open(context_file, 'r') as f:
@@ -338,7 +382,7 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
         if not caps.supports_tool_calls and context.get('tools') is not None:
             print(f'Skipping {context_name} test as tools seem unsupported by template {template_file}', file=sys.stderr)
             continue
-        
+
         needs_tools_in_system = len(context.get('tools', [])) > 0 and not caps.supports_tools
         if not caps.supports_system_role and (any(m['role'] == 'system' for m in context['messages']) or needs_tools_in_system):
             continue
@@ -362,7 +406,7 @@ async def async_hf_download(repo_id: str, filename: str) -> str:
 async def process_model(output_folder: str, model_id: str, context_files: list):
     try:
         config_str = await async_hf_download(model_id, "tokenizer_config.json")
-        
+
         try:
             config = json.loads(config_str)
         except json.JSONDecodeError:
