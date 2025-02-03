@@ -33,6 +33,21 @@ struct chat_template_caps {
     bool requires_typed_content = false;
 };
 
+struct chat_template_inputs {
+    nlohmann::ordered_json messages;
+    nlohmann::ordered_json tools;
+    bool add_generation_prompt = true;
+    nlohmann::ordered_json extra_context;
+    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+};
+
+struct chat_template_options {
+    bool apply_polyfills = true;
+    bool use_bos_token = true;
+    bool use_eos_token = true;
+    bool define_strftime_now = true;
+};
+
 class chat_template {
 
   private:
@@ -50,7 +65,18 @@ class chat_template {
         const nlohmann::ordered_json & extra_context = nlohmann::ordered_json()) const
     {
         try {
-            auto prompt = apply(messages, tools, add_generation_prompt, extra_context, /* apply_polyfills= */ false);
+            chat_template_inputs inputs;
+            inputs.messages = messages;
+            inputs.tools = tools;
+            inputs.add_generation_prompt = add_generation_prompt;
+            inputs.extra_context = extra_context;
+            // Use fixed date for tests
+            inputs.now = std::chrono::system_clock::from_time_t(0);
+
+            chat_template_options opts;
+            opts.apply_polyfills = false;
+
+            auto prompt = apply(inputs, opts);
             // fprintf(stderr, "try_raw_render: %s\n", prompt.c_str());
             return prompt;
         } catch (const std::exception & e) {
@@ -201,9 +227,15 @@ class chat_template {
                         },
                     })},
                 };
-                const json tools;
-                auto prefix = apply(json::array({user_msg}), tools, /* add_generation_prompt= */ true);
-                auto full = apply(json::array({user_msg, tool_call_msg}), tools, /* add_generation_prompt= */ false);
+                chat_template_inputs inputs;
+                inputs.messages = json::array({user_msg});
+                inputs.add_generation_prompt = true;
+                auto prefix = apply(inputs);
+                
+                inputs.messages.push_back(tool_call_msg);
+                inputs.add_generation_prompt = false;
+                auto full = apply(inputs);
+
                 if (full.find(prefix) != 0) {
                     if (prefix.rfind(eos_token_) == prefix.size() - eos_token_.size()) {
                         prefix = prefix.substr(0, prefix.size() - eos_token_.size());
@@ -226,15 +258,12 @@ class chat_template {
     const chat_template_caps & original_caps() const { return caps_; }
 
     std::string apply(
-        const nlohmann::ordered_json & messages,
-        const nlohmann::ordered_json & tools,
-        bool add_generation_prompt,
-        const nlohmann::ordered_json & extra_context = nlohmann::ordered_json(),
-        bool apply_polyfills = true) const
+        const chat_template_inputs & inputs,
+        const chat_template_options & opts = chat_template_options()) const
     {
         json actual_messages;
 
-        auto needs_polyfills = apply_polyfills && (false
+        auto needs_polyfills = opts.apply_polyfills && (false
             || !caps_.supports_system_role
             || !caps_.supports_tools
             || !caps_.supports_tool_responses
@@ -277,17 +306,17 @@ class chat_template {
                     pending_system.clear();
                 }
             };
-            auto needs_tools_in_system = !tools.is_null() && tools.size() > 0 && !caps_.supports_tools;
+            auto needs_tools_in_system = !inputs.tools.is_null() && inputs.tools.size() > 0 && !caps_.supports_tools;
 
             json adjusted_messages;
             if (needs_tools_in_system) {
-                adjusted_messages = add_system(messages,
-                    "Available tools: " + tools.dump(2));
+                adjusted_messages = add_system(inputs.messages,
+                    "Available tools: " + inputs.tools.dump(2));
                     // "\n\n"
                     // "You can call any of the following tools to satisfy the user's requests: " + tools.dump(2) + "\n\n"
                     // "Example tool call syntax:\n\n" + tool_call_example_ + "\n\n");
             } else {
-                adjusted_messages = messages;
+                adjusted_messages = inputs.messages;
             }
 
             for (const auto & message_ : adjusted_messages) {
@@ -380,22 +409,27 @@ class chat_template {
                 flush_sys();
             }
         } else {
-            actual_messages = messages;
+            actual_messages = inputs.messages;
         }
 
         auto context = minja::Context::make(json({
             {"messages", actual_messages},
-            {"add_generation_prompt", add_generation_prompt},
+            {"add_generation_prompt", inputs.add_generation_prompt},
             {"bos_token", bos_token_},
             {"eos_token", eos_token_},
+            // {"strftime_now", Value::callable([=](const std::shared_ptr<minja::Context> & context, minja::ArgumentsValue & args) {
+            //     args.expectArgs("strftime_now", {1, 1}, {0, 0});
+            //     auto format = args.args[0].get<std::string>();
+            //     return Value(std::to_string(inputs.now));
+            // })},
         }));
 
-        if (!tools.is_null()) {
-            auto tools_val = minja::Value(tools);
+        if (!inputs.tools.is_null()) {
+            auto tools_val = minja::Value(inputs.tools);
             context->set("tools", tools_val);
         }
-        if (!extra_context.is_null()) {
-            for (auto & kv : extra_context.items()) {
+        if (!inputs.extra_context.is_null()) {
+            for (auto & kv : inputs.extra_context.items()) {
                 minja::Value val(kv.value());
                 context->set(kv.key(), val);
             }
