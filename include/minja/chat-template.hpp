@@ -204,7 +204,6 @@ class chat_template {
             caps_.supports_tool_call_id = contains(out, "call_911_");
         }
 
-#if 0
         try {
             if (!caps_.supports_tools) {
                 const json user_msg {
@@ -228,30 +227,33 @@ class chat_template {
                         },
                     })},
                 };
-                chat_template_inputs inputs;
-                inputs.messages = json::array({user_msg});
-                inputs.add_generation_prompt = true;
-                auto prefix = apply(inputs);
-
-                inputs.messages.push_back(tool_call_msg);
-                inputs.add_generation_prompt = false;
-                auto full = apply(inputs);
+                std::string prefix, full;
+                {
+                    chat_template_inputs inputs;
+                    inputs.messages = json::array({user_msg});
+                    inputs.add_generation_prompt = true;
+                    prefix = apply(inputs);
+                }
+                {
+                    chat_template_inputs inputs;
+                    inputs.messages = json::array({user_msg, tool_call_msg});
+                    inputs.add_generation_prompt = false;
+                    full = apply(inputs);
+                }
 
                 if (full.find(prefix) != 0) {
                     if (prefix.rfind(eos_token_) == prefix.size() - eos_token_.size()) {
                         prefix = prefix.substr(0, prefix.size() - eos_token_.size());
-                    // } else {
-                    //     throw std::runtime_error("# prefix not found at start of prefix:\n" + prefix + "\n# vs full:\n" + full + "\n#");
                     }
-                } else {
-
+                }
+                if (full.find(prefix) != 0) {
+                    fprintf(stderr, "Failed to infer a tool call example (possible template bug)\n");
                 }
                 tool_call_example_ = full.substr(prefix.size());
             }
         } catch (const std::exception & e) {
             fprintf(stderr, "Failed to generate tool call example: %s\n", e.what());
         }
-#endif
     }
 
     const std::string & source() const { return source_; }
@@ -265,21 +267,16 @@ class chat_template {
     {
         json actual_messages;
 
+        auto has_tools = inputs.tools.is_array() && !inputs.tools.empty();
         auto needs_polyfills = opts.apply_polyfills && (false
             || !caps_.supports_system_role
-            || !caps_.supports_tools
-            || !caps_.supports_tool_responses
-            || !caps_.supports_tool_calls
-            || caps_.requires_object_arguments
+            || (has_tools && (false
+                || !caps_.supports_tools
+                || !caps_.supports_tool_responses
+                || !caps_.supports_tool_calls
+                || caps_.requires_object_arguments
+            ))
             || caps_.requires_typed_content
-            // || !caps_.supports_system_role
-            // || (!tools.is_null() && (false
-            //     || !caps_.supports_tools
-            //     || !caps_.supports_tool_responses
-            //     || !caps_.supports_tool_calls
-            //     || caps_.requires_object_arguments
-            // ))
-            // || caps_.requires_typed_content
         );
         if (needs_polyfills) {
             actual_messages = json::array();
@@ -313,9 +310,9 @@ class chat_template {
             json adjusted_messages;
             if (needs_tools_in_system) {
                 adjusted_messages = add_system(inputs.messages,
-                    "Available tools: " + inputs.tools.dump(2));
                     // "\n\n"
-                    // "You can call any of the following tools to satisfy the user's requests: " + tools.dump(2) + "\n\n"
+                    "You can call any of the following tools to satisfy the user's requests: " + inputs.tools.dump(2));
+                    // "\n\n"
                     // "Example tool call syntax:\n\n" + tool_call_example_ + "\n\n");
             } else {
                 adjusted_messages = inputs.messages;
@@ -459,7 +456,7 @@ class chat_template {
             std::string existing_system = messages_with_system.at(0).at("content");
             messages_with_system[0] = json {
                 {"role", "system"},
-                {"content", existing_system + "\n" + system_prompt},
+                {"content", existing_system + "\n\n" + system_prompt},
             };
         } else {
             messages_with_system.insert(messages_with_system.begin(), json {

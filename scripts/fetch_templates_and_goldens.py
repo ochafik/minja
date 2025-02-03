@@ -66,7 +66,7 @@ def add_system(messages, system_prompt):
         existing_system = messages[0]["content"]
         messages[0] = {
             "role": "system",
-            "content": existing_system + "\n" + system_prompt,
+            "content": existing_system + "\n\n" + system_prompt,
         }
     else:
         messages.insert(0, {
@@ -243,7 +243,7 @@ class chat_template:
 
         if self.needs_polyfills(context):
             if has_tools and not caps.supports_tools:
-                add_system(context['messages'], f"Available tools: {json.dumps(context['tools'], indent=2)}")
+                add_system(context['messages'], f"You can call any of the following tools to satisfy the user's requests: {json.dumps(context['tools'], indent=2)}")
 
             for message in context['messages']:
                 if 'tool_calls' in message:
