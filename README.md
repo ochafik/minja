@@ -31,9 +31,9 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 ## Usage:
 
-This library is header-only: just copy the header(s) you need, make sure to use a compiler that handles C++11 and you're done. Oh, and get [nlohmann::json](https://github.com/nlohmann/json)'s `json.hpp` in your include path.
+This library is header-only: just copy the header(s) you need, make sure to use a compiler that handles C++17 and you're done. Oh, and get [nlohmann::json](https://github.com/nlohmann/json)'s `json.hpp` in your include path.
 
-See API in [minja/minja.hpp](./include/minja/minja.hpp) and [minja/chat-template.h](./include/minja/chat-template.hpp) (experimental).
+See API in [minja/minja.hpp](./include/minja/minja.hpp) and [minja/chat-template.hpp](./include/minja/chat-template.hpp) (experimental).
 
 For raw Jinja templating (see [examples/raw.cpp](./examples/raw.cpp)):
 
@@ -94,10 +94,11 @@ Minja supports the following subset of the [Jinja2/3 template syntax](https://ji
 - Statements `{{% … %}}`, variable sections `{{ … }}`, and comments `{# … #}` with pre/post space elision `{%- … -%}` / `{{- … -}}` / `{#- … -#}`
 - `if` / `elif` / `else` / `endif`
 - `for` (`recursive`) (`if`) / `else` / `endfor` w/ `loop.*` (including `loop.cycle`) and destructuring
+- `break`, `continue` (aka [loop controls extensions](https://github.com/google/minja/pull/39))
 - `set` w/ namespaces & destructuring
 - `macro` / `endmacro`
 - `filter` / `endfilter`
-- Extensible filters collection: `count`, `dictsort`, `equalto`, `e` / `escape`, `items`, `join`, `joiner`, `namespace`, `raise_exception`, `range`, `reject`, `tojson`, `trim`
+- Extensible filters collection: `count`, `dictsort`, `equalto`, `e` / `escape`, `items`, `join`, `joiner`, `namespace`, `raise_exception`, `range`, `reject` / `rejectattr` / `select` / `selectattr`, `tojson`, `trim`
 
 Main limitations (non-exhaustive list):
 
@@ -111,6 +112,7 @@ Main limitations (non-exhaustive list):
 ## Roadmap / TODOs
 
 - [ ] Fix known line difference issues on Windows
+- [ ] Document the various capabilities detectors + backfill strategies used
 - [ ] Propose integration w/ https://github.com/google/gemma.cpp
 - [x] Integrate to llama.cpp: https://github.com/ggerganov/llama.cpp/pull/11016 + https://github.com/ggerganov/llama.cpp/pull/9639
 - Improve fuzzing coverage:
