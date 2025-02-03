@@ -204,7 +204,8 @@ class chat_template {
             caps_.supports_tool_call_id = contains(out, "call_911_");
         }
 
-        // try {
+#if 0
+        try {
             if (!caps_.supports_tools) {
                 const json user_msg {
                     {"role", "user"},
@@ -247,9 +248,10 @@ class chat_template {
                 }
                 tool_call_example_ = full.substr(prefix.size());
             }
-        // } catch (const std::exception & e) {
-        //     fprintf(stderr, "Failed to generate tool call example: %s\n", e.what());
-        // }
+        } catch (const std::exception & e) {
+            fprintf(stderr, "Failed to generate tool call example: %s\n", e.what());
+        }
+#endif
     }
 
     const std::string & source() const { return source_; }
@@ -415,18 +417,28 @@ class chat_template {
         auto context = minja::Context::make(json({
             {"messages", actual_messages},
             {"add_generation_prompt", inputs.add_generation_prompt},
-            {"bos_token", bos_token_},
-            {"eos_token", eos_token_},
-            // {"strftime_now", Value::callable([=](const std::shared_ptr<minja::Context> & context, minja::ArgumentsValue & args) {
-            //     args.expectArgs("strftime_now", {1, 1}, {0, 0});
-            //     auto format = args.args[0].get<std::string>();
-            //     return Value(std::to_string(inputs.now));
-            // })},
         }));
-
+        if (opts.use_bos_token) {
+            context->set("bos_token", bos_token_);
+        }
+        if (opts.use_eos_token) {
+            context->set("eos_token", eos_token_);
+        }
+        if (opts.define_strftime_now) {
+            auto now = inputs.now;
+            context->set("strftime_now", Value::callable([now](const std::shared_ptr<minja::Context> &, minja::ArgumentsValue & args) {
+                args.expectArgs("strftime_now", {1, 1}, {0, 0});
+                auto format = args.args[0].get<std::string>();
+                
+                auto time = std::chrono::system_clock::to_time_t(now);
+                auto local_time = *std::localtime(&time);
+                std::ostringstream ss;
+                ss << std::put_time(&local_time, format.c_str());
+                return ss.str();
+            })); 
+        }
         if (!inputs.tools.is_null()) {
-            auto tools_val = minja::Value(inputs.tools);
-            context->set("tools", tools_val);
+            context->set("tools", minja::Value(inputs.tools));
         }
         if (!inputs.extra_context.is_null()) {
             for (auto & kv : inputs.extra_context.items()) {

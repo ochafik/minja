@@ -18,6 +18,8 @@
 #undef NDEBUG
 #include <cassert>
 
+#define TEST_DATE (getenv("TEST_DATE") ? getenv("TEST_DATE") : "2024-07-26")
+
 using json = nlohmann::ordered_json;
 
 template <class T>
@@ -128,6 +130,12 @@ int main(int argc, char *argv[]) {
         inputs.messages = ctx.at("messages");
         inputs.tools = ctx.contains("tools") ? ctx.at("tools") : json();
         inputs.add_generation_prompt = ctx.at("add_generation_prompt");
+
+        std::istringstream ss(TEST_DATE);
+        std::tm tm = {};
+        ss >> std::get_time(&tm, "%Y-%m-%d");
+        inputs.now = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+
         if (ctx.contains("tools")) {
             inputs.extra_context = json {
                 {"builtin_tools", {
