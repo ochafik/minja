@@ -50,7 +50,7 @@ class chat_template {
         const nlohmann::ordered_json & extra_context = nlohmann::ordered_json()) const
     {
         try {
-            auto prompt = apply(messages, tools, add_generation_prompt, extra_context, /* adjust_inputs= */ false);
+            auto prompt = apply(messages, tools, add_generation_prompt, extra_context, /* apply_polyfills= */ false);
             // fprintf(stderr, "try_raw_render: %s\n", prompt.c_str());
             return prompt;
         } catch (const std::exception & e) {
@@ -226,19 +226,21 @@ class chat_template {
         const nlohmann::ordered_json & tools,
         bool add_generation_prompt,
         const nlohmann::ordered_json & extra_context = nlohmann::ordered_json(),
-        bool adjust_inputs = true) const
+        bool apply_polyfills = true) const
     {
         json actual_messages;
 
-        auto needs_adjustments = adjust_inputs && (false
+        auto needs_polyfills = apply_polyfills && (false
             || !caps_.supports_system_role
-            || !caps_.supports_tools
-            || !caps_.supports_tool_responses
-            || !caps_.supports_tool_calls
-            || caps_.requires_object_arguments
+            || (!tools.is_null() && (false
+                || !caps_.supports_tools
+                || !caps_.supports_tool_responses
+                || !caps_.supports_tool_calls
+                || caps_.requires_object_arguments
+            ))
             || caps_.requires_typed_content
         );
-        if (needs_adjustments) {
+        if (needs_polyfills) {
             actual_messages = json::array();
 
             auto add_message = [&](const json & msg) {
