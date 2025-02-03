@@ -442,8 +442,7 @@ class chat_template {
         }
         if (!inputs.extra_context.is_null()) {
             for (auto & kv : inputs.extra_context.items()) {
-                minja::Value val(kv.value());
-                context->set(kv.key(), val);
+                context->set(kv.key(), minja::Value(kv.value()));
             }
         }
 

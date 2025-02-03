@@ -2615,6 +2615,7 @@ inline std::shared_ptr<Context> Context::builtins() {
   }));
   globals.set("join", simple_function("join", { "items", "d" }, [](const std::shared_ptr<Context> &, Value & args) {
     auto do_join = [](Value & items, const std::string & sep) {
+      if (!items.is_array()) throw std::runtime_error("object is not iterable: " + items.dump());
       std::ostringstream oss;
       auto first = true;
       for (size_t i = 0, n = items.size(); i < n; ++i) {
