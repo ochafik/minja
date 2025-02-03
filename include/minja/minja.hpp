@@ -2194,7 +2194,7 @@ private:
     }
 
     TemplateTokenVector tokenize() {
-      static std::regex comment_tok(R"(\{#([-~]?)(.*?)([-~]?)#\})");
+      static std::regex comment_tok(R"(\{#([-~]?)([\s\S\r\n]*?)([-~]?)#\})");
       static std::regex expr_open_regex(R"(\{\{([-~])?)");
       static std::regex block_open_regex(R"(^\{%([-~])?[\s\n\r]*)");
       static std::regex block_keyword_tok(R"((if|else|elif|endif|for|endfor|generation|endgeneration|set|endset|block|endblock|macro|endmacro|filter|endfilter|break|continue)\b)");
