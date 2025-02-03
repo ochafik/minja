@@ -2,7 +2,7 @@
 
 _**This is not an official Google product**_
 
-Minja is a minimalistic reimplementation of the [Jinja](https://github.com/pallets/jinja/) templating engine to integrate in/with C++ LLM projects (such as [llama.cpp](https://github.com/ggerganov/llama.cpp) or [gemma.cpp](https://github.com/google/gemma.cpp)).
+Minja is a minimalistic reimplementation of the [Jinja](https://github.com/pallets/jinja/) templating engine to integrate in/with C++ LLM projects (it's used in [llama.cpp](https://github.com/ggerganov/llama.cpp/pull/11016) and [GPT4All](https://github.com/nomic-ai/gpt4all/pull/3433)).
 
 It is **not general purpose**: it includes just what’s needed for actual chat templates (very limited set of filters, tests and language features). Users with different needs should look at third-party alternatives such as [Jinja2Cpp](https://github.com/jinja2cpp/Jinja2Cpp), [Jinja2CppLight](https://github.com/hughperkins/Jinja2CppLight), or [inja](https://github.com/pantor/inja) (none of which we endorse).
 
@@ -31,9 +31,9 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 ## Usage:
 
-This library is header-only: just copy the header(s) you need, make sure to use a compiler that handles C++11 and you're done. Oh, and get [nlohmann::json](https://github.com/nlohmann/json)'s `json.hpp` in your include path.
+This library is header-only: just copy the header(s) you need, make sure to use a compiler that handles C++17 and you're done. Oh, and get [nlohmann::json](https://github.com/nlohmann/json)'s `json.hpp` in your include path.
 
-See API in [minja/minja.hpp](./include/minja/minja.hpp) and [minja/chat-template.h](./include/minja/chat-template.hpp) (experimental).
+See API in [minja/minja.hpp](./include/minja/minja.hpp) and [minja/chat-template.hpp](./include/minja/chat-template.hpp) (experimental).
 
 For raw Jinja templating (see [examples/raw.cpp](./examples/raw.cpp)):
 
@@ -94,10 +94,11 @@ Minja supports the following subset of the [Jinja2/3 template syntax](https://ji
 - Statements `{{% … %}}`, variable sections `{{ … }}`, and comments `{# … #}` with pre/post space elision `{%- … -%}` / `{{- … -}}` / `{#- … -#}`
 - `if` / `elif` / `else` / `endif`
 - `for` (`recursive`) (`if`) / `else` / `endfor` w/ `loop.*` (including `loop.cycle`) and destructuring
+- `break`, `continue` (aka [loop controls extensions](https://github.com/google/minja/pull/39))
 - `set` w/ namespaces & destructuring
 - `macro` / `endmacro`
 - `filter` / `endfilter`
-- Extensible filters collection: `count`, `dictsort`, `equalto`, `e` / `escape`, `items`, `join`, `joiner`, `namespace`, `raise_exception`, `range`, `reject`, `tojson`, `trim`
+- Extensible filters collection: `count`, `dictsort`, `equalto`, `e` / `escape`, `items`, `join`, `joiner`, `namespace`, `raise_exception`, `range`, `reject` / `rejectattr` / `select` / `selectattr`, `tojson`, `trim`
 
 Main limitations (non-exhaustive list):
 
@@ -110,7 +111,9 @@ Main limitations (non-exhaustive list):
 
 ## Roadmap / TODOs
 
-- [x] Fix known issues w/ CRLF on Windows
+- [ ] Fix known line difference issues on Windows
+- [ ] Document the various capabilities detectors + backfill strategies used
+- [ ] Propose integration w/ https://github.com/google/gemma.cpp
 - [x] Integrate to llama.cpp: https://github.com/ggerganov/llama.cpp/pull/11016 + https://github.com/ggerganov/llama.cpp/pull/9639
 - Improve fuzzing coverage:
     - use thirdparty jinja grammar to guide exploration of inputs (or implement prettification of internal ASTs and use them to generate arbitrary values)
