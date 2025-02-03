@@ -141,9 +141,14 @@ int main(int argc, char *argv[]) {
                 {"builtin_tools", json::array({"wolfram_alpha", "brave_search"})},
             };
         }
+
+        minja::chat_template_options opts;
+        // TODO: implement logic for examples in python
+        opts.polyfill_tool_call_examples = false;
+
         std::string actual;
         try {
-            actual = tmpl.apply(inputs);
+            actual = tmpl.apply(inputs, opts);
         } catch (const std::exception &e) {
             std::cerr << "Error applying template: " << e.what() << std::endl;
             return 1;
