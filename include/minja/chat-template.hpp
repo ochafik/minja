@@ -178,41 +178,45 @@ class chat_template {
             caps_.supports_tool_call_id = contains(out, "call_911_");
         }
 
-        // if (!caps_.supports_tools) {
-        //     const json user_msg {
-        //         {"role", "user"},
-        //         {"content", "Hey"},
-        //     };
-        //     const json tool_call_msg {
-        //         {"role", "assistant"},
-        //         {"content", nullptr},
-        //         {"tool_calls", json::array({
-        //             {
-        //                 // TODO: detect if requires numerical id or fixed length == 6 like Nemo
-        //                 {"id", "call_1___"},
-        //                 {"type", "function"},
-        //                 {"function", {
-        //                     {"name", "tool_name"},
-        //                     {"arguments", (json {
-        //                         {"arg1", "some_value"},
-        //                     }).dump()},
-        //                 }},
-        //             },
-        //         })},
-        //     };
-        //     const json tools;
-        //     auto prefix = apply(json::array({user_msg}), tools, /* add_generation_prompt= */ true);
-        //     auto full = apply(json::array({user_msg, tool_call_msg}), tools, /* add_generation_prompt= */ false);
-        //     if (full.find(prefix) != 0) {
-        //         if (prefix.rfind(eos_token_) == prefix.size() - eos_token_.size()) {
-        //             prefix = prefix.substr(0, prefix.size() - eos_token_.size());
-        //         } else {
-        //             throw std::runtime_error("prefix not found at start of full: " + prefix + " vs " + full);
-        //         }
-        //     } else {
+        // try {
+            if (!caps_.supports_tools) {
+                const json user_msg {
+                    {"role", "user"},
+                    {"content", "Hey"},
+                };
+                const json tool_call_msg {
+                    {"role", "assistant"},
+                    {"content", nullptr},
+                    {"tool_calls", json::array({
+                        {
+                            // TODO: detect if requires numerical id or fixed length == 6 like Nemo
+                            {"id", "call_1___"},
+                            {"type", "function"},
+                            {"function", {
+                                {"name", "tool_name"},
+                                {"arguments", (json {
+                                    {"arg1", "some_value"},
+                                }).dump()},
+                            }},
+                        },
+                    })},
+                };
+                const json tools;
+                auto prefix = apply(json::array({user_msg}), tools, /* add_generation_prompt= */ true);
+                auto full = apply(json::array({user_msg, tool_call_msg}), tools, /* add_generation_prompt= */ false);
+                if (full.find(prefix) != 0) {
+                    if (prefix.rfind(eos_token_) == prefix.size() - eos_token_.size()) {
+                        prefix = prefix.substr(0, prefix.size() - eos_token_.size());
+                    // } else {
+                    //     throw std::runtime_error("# prefix not found at start of prefix:\n" + prefix + "\n# vs full:\n" + full + "\n#");
+                    }
+                } else {
 
-        //     }
-        //     tool_call_example_ = full.substr(prefix.size());
+                }
+                tool_call_example_ = full.substr(prefix.size());
+            }
+        // } catch (const std::exception & e) {
+        //     fprintf(stderr, "Failed to generate tool call example: %s\n", e.what());
         // }
     }
 
