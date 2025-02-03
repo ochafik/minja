@@ -2,7 +2,7 @@
 
 _**This is not an official Google product**_
 
-Minja is a minimalistic reimplementation of the [Jinja](https://github.com/pallets/jinja/) templating engine to integrate in/with C++ LLM projects (such as [llama.cpp](https://github.com/ggerganov/llama.cpp) or [gemma.cpp](https://github.com/google/gemma.cpp)).
+Minja is a minimalistic reimplementation of the [Jinja](https://github.com/pallets/jinja/) templating engine to integrate in/with C++ LLM projects (it's used in [llama.cpp](https://github.com/ggerganov/llama.cpp/pull/11016) and [GPT4All](https://github.com/nomic-ai/gpt4all/pull/3433)).
 
 It is **not general purpose**: it includes just what’s needed for actual chat templates (very limited set of filters, tests and language features). Users with different needs should look at third-party alternatives such as [Jinja2Cpp](https://github.com/jinja2cpp/Jinja2Cpp), [Jinja2CppLight](https://github.com/hughperkins/Jinja2CppLight), or [inja](https://github.com/pantor/inja) (none of which we endorse).
 
@@ -110,7 +110,8 @@ Main limitations (non-exhaustive list):
 
 ## Roadmap / TODOs
 
-- [x] Fix known issues w/ CRLF on Windows
+- [ ] Fix known line difference issues on Windows
+- [ ] Propose integration w/ https://github.com/google/gemma.cpp
 - [x] Integrate to llama.cpp: https://github.com/ggerganov/llama.cpp/pull/11016 + https://github.com/ggerganov/llama.cpp/pull/9639
 - Improve fuzzing coverage:
     - use thirdparty jinja grammar to guide exploration of inputs (or implement prettification of internal ASTs and use them to generate arbitrary values)
