@@ -19,14 +19,16 @@ int main() {
         /* bos_token= */ "<|start|>",
         /* eos_token= */ "<|end|>"
     );
-    std::cout << tmpl.apply(
-        json::parse(R"([
-            {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi there"}
-        ])"),
-        json::parse(R"([
-            {"type": "function", "function": {"name": "google_search", "arguments": {"query": "2+2"}}}
-        ])"),
-        /* add_generation_prompt= */ true,
-        /* extra_context= */ {}) << std::endl;
+
+    minja::chat_template_inputs inputs;
+    inputs.messages = json::parse(R"([
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there"}
+    ])");
+    inputs.add_generation_prompt = true;
+    inputs.tools = json::parse(R"([
+        {"type": "function", "function": {"name": "google_search", "arguments": {"query": "2+2"}}}
+    ])");
+
+    std::cout << tmpl.apply(inputs) << std::endl;
 }

@@ -18,6 +18,8 @@
 #undef NDEBUG
 #include <cassert>
 
+#define TEST_DATE (getenv("TEST_DATE") ? getenv("TEST_DATE") : "2024-07-26")
+
 using json = nlohmann::ordered_json;
 
 template <class T>
@@ -53,6 +55,14 @@ static std::string read_file(const std::string &path) {
     out.resize(static_cast<size_t>(size));
     fs.read(&out[0], static_cast<std::streamsize>(size));
     return out;
+}
+
+static void write_file(const std::string &path, const std::string &content) {
+    std::ofstream fs(path, std::ios_base::binary);
+    if (!fs.is_open()) {
+        throw std::runtime_error("Failed to open file: " + path);
+    }
+    fs.write(content.data(), content.size());
 }
 
 #ifndef _WIN32
@@ -96,10 +106,8 @@ int main(int argc, char *argv[]) {
             return 127;
         }
 
-        std::cout << "# Testing template: " << tmpl_file << std::endl
-                << "# With caps: " << caps_file << std::endl
-                << "# With context: " << ctx_file << std::endl
-                << "# Against golden file: " << golden_file << std::endl
+        std::cout << "# Testing template:\n"
+                << "# ./build/bin/test-supported-template " << json::array({tmpl_file, caps_file, ctx_file, golden_file}).dump() << std::endl
                 << std::flush;
 
         auto ctx = json::parse(read_file(ctx_file));
@@ -118,21 +126,38 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
+        struct minja::chat_template_inputs inputs;
+        inputs.messages = ctx.at("messages");
+        inputs.tools = ctx.contains("tools") ? ctx.at("tools") : json();
+        inputs.add_generation_prompt = ctx.at("add_generation_prompt");
+
+        std::istringstream ss(TEST_DATE);
+        std::tm tm = {};
+        ss >> std::get_time(&tm, "%Y-%m-%d");
+        inputs.now = std::chrono::system_clock::from_time_t(std::mktime(&tm));
+
+        if (ctx.contains("tools")) {
+            inputs.extra_context = json {
+                {"builtin_tools", json::array({"wolfram_alpha", "brave_search"})},
+            };
+        }
+
         std::string actual;
         try {
-            actual = tmpl.apply(
-                ctx.at("messages"),
-                ctx.contains("tools") ? ctx.at("tools") : json(),
-                ctx.at("add_generation_prompt"),
-                ctx.contains("tools") ? json{
-                                            {"builtin_tools", {"wolfram_alpha", "brave_search"}}}
-                                    : json());
+            actual = tmpl.apply(inputs);
         } catch (const std::exception &e) {
             std::cerr << "Error applying template: " << e.what() << std::endl;
             return 1;
         }
 
-        assert_equals(expected, actual);
+        if (expected != actual) {
+            if (getenv("WRITE_GOLDENS")) {
+                write_file(golden_file, actual);
+                std::cerr << "Updated golden file: " << golden_file << std::endl;
+            } else {
+                assert_equals(expected, actual);
+            }
+        }
 
         // Some unresolved CRLF issues again with the goldens on Windows.
 #ifndef _WIN32
