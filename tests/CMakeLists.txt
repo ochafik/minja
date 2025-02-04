@@ -17,8 +17,25 @@ target_link_libraries(test-syntax PRIVATE
     gtest_main
     gmock
 )
+
+add_executable(test-polyfills test-polyfills.cpp)
+target_compile_features(test-polyfills PUBLIC cxx_std_17)
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    target_compile_definitions(test-polyfills PUBLIC _CRT_SECURE_NO_WARNINGS)
+    target_compile_options(gtest PRIVATE -Wno-language-extension-token)
+endif()
+target_link_libraries(test-polyfills PRIVATE
+    nlohmann_json::nlohmann_json
+    gtest_main
+    gmock
+)
 if (NOT CMAKE_CROSSCOMPILING)
     gtest_discover_tests(test-syntax)
+endif()
+
+if (NOT CMAKE_CROSSCOMPILING)
+    gtest_discover_tests(test-syntax)
+    gtest_discover_tests(test-polyfills)
 endif()
 
 add_executable(test-capabilities test-capabilities.cpp)
@@ -54,7 +71,7 @@ set(MODEL_IDS
     # minja implementation on the same template and context, and compare the output with the golden.
     #
     # For Gated models, you'll need to run `huggingface-cli login` (and be granted access) to download their template.
-    
+
     abacusai/Fewshot-Metamath-OrcaVicuna-Mistral
     bofenghuang/vigogne-2-70b-chat
     CohereForAI/c4ai-command-r-plus # Gated

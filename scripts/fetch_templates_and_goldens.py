@@ -278,7 +278,7 @@ class chat_template:
             if has_tools and not caps.supports_tools:
                 add_system(context['messages'],
                     f"You can call any of the following tools to satisfy the user's requests: {json.dumps(context['tools'], indent=2)}" +
-                    ("\n\nExample tool call syntax:\n\n" + self.tool_call_example if self.tool_call_example is not None else ""))
+                    ("\n\nExample tool call syntax:\n\n" + self.tool_call_example + "\n\n" if self.tool_call_example is not None else ""))
 
             for message in context['messages']:
                 if 'tool_calls' in message:

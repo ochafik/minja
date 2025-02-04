@@ -249,11 +249,10 @@ class chat_template {
                     inputs.add_generation_prompt = false;
                     full = apply(inputs);
                 }
-
-                if (full.find(prefix) != 0) {
-                    if (prefix.rfind(eos_token_) == prefix.size() - eos_token_.size()) {
-                        prefix = prefix.substr(0, prefix.size() - eos_token_.size());
-                    }
+                auto eos_pos_last = full.rfind(eos_token_);
+                if (eos_pos_last == prefix.size() - eos_token_.size() ||
+                      (full[full.size() - 1] == '\n' && (eos_pos_last == full.size() - eos_token_.size() - 1))) {
+                    full = full.substr(0, eos_pos_last);
                 }
                 if (full.find(prefix) != 0) {
                     fprintf(stderr, "Failed to infer a tool call example (possible template bug)\n");
@@ -363,7 +362,7 @@ class chat_template {
             if (polyfill_tools) {
                 adjusted_messages = add_system(inputs.messages,
                     "You can call any of the following tools to satisfy the user's requests: " + minja::Value(inputs.tools).dump(2, /* to_json= */ true) +
-                    (!polyfill_tool_call_example || tool_call_example_.empty() ? "" : "\n\nExample tool call syntax:\n\n" + tool_call_example_));
+                    (!polyfill_tool_call_example || tool_call_example_.empty() ? "" : "\n\nExample tool call syntax:\n\n" + tool_call_example_ + "\n\n"));
             } else {
                 adjusted_messages = inputs.messages;
             }
