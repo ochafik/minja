@@ -328,10 +328,27 @@ TEST(PolyfillTest, ToolsPolyfill) {
         "      \"id\": \"call_1___\"\n"
         "    }\n"
         "  ]\n"
-        "}<|im_end|>\n"
+        "}<|im_end|>\n" // TODO: fix this
         "\n"
         "I need help<|im_end|>\n"
         "<|im_start|>assistant\n",
+        tmpl.apply(inputs));
+}
+
+TEST(PolyfillTest, ToolSupported) {
+    chat_template tmpl(TEMPLATE_DUMMY, "<|im_end|>", "");
+
+    auto inputs = chat_template_inputs();
+    inputs.messages = json::array({message_tool});
+
+    EXPECT_EQ(
+        "message: {\n"
+        "  \"role\": \"tool\",\n"
+        "  \"content\": {\n"
+        "    \"result\": 123\n"
+        "  }\n"
+        "}\n"
+        "message: ",
         tmpl.apply(inputs));
 }
 
