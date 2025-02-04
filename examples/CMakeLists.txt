@@ -12,5 +12,8 @@ foreach(example
     add_executable(${example} ${example}.cpp)
     target_compile_features(${example} PUBLIC cxx_std_17)
     target_link_libraries(${example} PRIVATE nlohmann_json::nlohmann_json)
+    if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+        target_compile_definitions(${example} PUBLIC _CRT_SECURE_NO_WARNINGS)
+    endif()
 
 endforeach()
