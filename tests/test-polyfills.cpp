@@ -158,7 +158,7 @@ static chat_template_options options_no_polyfills() {
 };
 
 TEST(PolyfillTest, NoPolyFill) {
-    chat_template tmpl(TEMPLATE_CHATML, "<|im_end|>", "");
+    chat_template tmpl(TEMPLATE_CHATML, "", "");
 
     auto inputs = chat_template_inputs();
     inputs.messages = json::array({message_user_text});
@@ -185,7 +185,7 @@ TEST(PolyfillTest, NoPolyFill) {
 }
 
 TEST(PolyfillTest, SystemRoleSupported) {
-    chat_template chatml(TEMPLATE_CHATML, "<|im_end|>", "");
+    chat_template chatml(TEMPLATE_CHATML, "", "");
     chat_template dummy(TEMPLATE_DUMMY, "", "");
 
     auto inputs = chat_template_inputs();
@@ -212,7 +212,7 @@ TEST(PolyfillTest, SystemRoleSupported) {
 }
 
 TEST(PolyfillTest, SystemRolePolyfill) {
-    chat_template tmpl(TEMPLATE_CHATML_NO_SYSTEM, "<|im_end|>", "");
+    chat_template tmpl(TEMPLATE_CHATML_NO_SYSTEM, "", "");
 
     auto inputs = chat_template_inputs();
     inputs.messages = json::array({message_system, message_user_text});
@@ -230,7 +230,7 @@ TEST(PolyfillTest, SystemRolePolyfill) {
 }
 
 TEST(PolyfillTest, ToolCallSupported) {
-    chat_template tmpl(TEMPLATE_DUMMY, "<|im_end|>", "");
+    chat_template tmpl(TEMPLATE_DUMMY, "", "");
 
     auto inputs = chat_template_inputs();
     inputs.messages = json::array({message_user_text, message_assistant_call_id});
@@ -261,7 +261,7 @@ TEST(PolyfillTest, ToolCallSupported) {
 }
 
 TEST(PolyfillTest, ToolCallPolyfill) {
-    chat_template tmpl(TEMPLATE_CHATML_NO_SYSTEM, "<|im_end|>", "");
+    chat_template tmpl(TEMPLATE_CHATML, "", "");
 
     auto inputs = chat_template_inputs();
     inputs.messages = json::array({message_user_text, message_assistant_call_id});
@@ -286,14 +286,14 @@ TEST(PolyfillTest, ToolCallPolyfill) {
 }
 
 TEST(PolyfillTest, ToolsPolyfill) {
-    chat_template tmpl(TEMPLATE_CHATML_NO_SYSTEM, "<|im_end|>", "");
+    chat_template tmpl(TEMPLATE_CHATML, "", "<|im_end|>");
 
     auto inputs = chat_template_inputs();
     inputs.messages = json::array({message_user_text});
     inputs.tools = json::array({special_function_tool});
 
     EXPECT_EQ(
-        "<|im_start|>user\n"
+        "<|im_start|>system\n"
         "You can call any of the following tools to satisfy the user's requests: [\n"
         "  {\n"
         "    \"type\": \"function\",\n"
@@ -328,15 +328,15 @@ TEST(PolyfillTest, ToolsPolyfill) {
         "      \"id\": \"call_1___\"\n"
         "    }\n"
         "  ]\n"
-        "}<|im_end|>\n" // TODO: fix this
-        "\n"
+        "}\n\n<|im_end|>\n"
+        "<|im_start|>user\n"
         "I need help<|im_end|>\n"
         "<|im_start|>assistant\n",
         tmpl.apply(inputs));
 }
 
 TEST(PolyfillTest, ToolSupported) {
-    chat_template tmpl(TEMPLATE_DUMMY, "<|im_end|>", "");
+    chat_template tmpl(TEMPLATE_DUMMY, "", "");
 
     auto inputs = chat_template_inputs();
     inputs.messages = json::array({message_tool});
@@ -353,7 +353,7 @@ TEST(PolyfillTest, ToolSupported) {
 }
 
 TEST(PolyfillTest, ToolPolyfill) {
-    chat_template tmpl(TEMPLATE_CHATML_NO_SYSTEM, "<|im_end|>", "");
+    chat_template tmpl(TEMPLATE_CHATML_NO_SYSTEM, "", "");
 
     auto inputs = chat_template_inputs();
     inputs.messages = json::array({message_tool});
