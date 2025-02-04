@@ -41,6 +41,9 @@ set_tests_properties(test-syntax-jinja2 PROPERTIES ENVIRONMENT "USE_JINJA2=1;PYT
 
 add_executable(test-supported-template test-supported-template.cpp)
 target_compile_features(test-supported-template PUBLIC cxx_std_17)
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    target_compile_definitions(test-supported-template PUBLIC _CRT_SECURE_NO_WARNINGS)
+endif()
 target_link_libraries(test-supported-template PRIVATE nlohmann_json::nlohmann_json)
 
 set(MODEL_IDS
