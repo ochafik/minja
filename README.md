@@ -31,7 +31,7 @@ It is **not general purpose**: it includes just what’s needed for actual chat 
 
 ## Usage:
 
-This library is header-only: just copy the header(s) you need, make sure to use a compiler that handles C++17 and you're done. Oh, and get [nlohmann::json](https://github.com/nlohmann/json)'s `json.hpp` in your include path.
+This library is header-only: just copy the header(s) you need, make sure to use a compiler that handles C++17 and you're done. Oh, and get [nlohmann::json](https://github.com/nlohmann/json) in your include path.
 
 See API in [minja/minja.hpp](./include/minja/minja.hpp) and [minja/chat-template.hpp](./include/minja/chat-template.hpp) (experimental).
 

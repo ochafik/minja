@@ -91,7 +91,6 @@ message(STATUS "${fuzztest_BINARY_DIR}: ${${fuzztest_BINARY_DIR}}")
 include_directories(
     include/minja
     ${json_SOURCE_DIR}/include
-    ${json_SOURCE_DIR}/include/nlohmann
 )
 
 add_subdirectory(examples)

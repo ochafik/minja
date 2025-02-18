@@ -9,9 +9,11 @@
 #pragma once
 
 #include "minja.hpp"
-#include <json.hpp>
+
 #include <string>
 #include <vector>
+
+#include <nlohmann/json.hpp>
 
 using json = nlohmann::ordered_json;
 
