@@ -18,6 +18,22 @@ target_link_libraries(test-syntax PRIVATE
     gmock
 )
 
+if (WIN32)
+    message(STATUS "Skipping test-chat-template on Win32")
+else()
+    add_executable(test-chat-template test-chat-template.cpp)
+    target_compile_features(test-chat-template PUBLIC cxx_std_17)
+    if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+        target_compile_definitions(test-chat-template PUBLIC _CRT_SECURE_NO_WARNINGS)
+        target_compile_options(gtest PRIVATE -Wno-language-extension-token)
+    endif()
+    target_link_libraries(test-chat-template PRIVATE
+        nlohmann_json::nlohmann_json
+        gtest_main
+        gmock
+    )
+endif()
+
 add_executable(test-polyfills test-polyfills.cpp)
 target_compile_features(test-polyfills PUBLIC cxx_std_17)
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
@@ -31,6 +47,9 @@ target_link_libraries(test-polyfills PRIVATE
 )
 if (NOT CMAKE_CROSSCOMPILING)
     gtest_discover_tests(test-syntax)
+    if (NOT WIN32)
+        gtest_discover_tests(test-chat-template)
+    endif()
     add_test(NAME test-polyfills COMMAND test-polyfills)
     set_tests_properties(test-polyfills PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()
