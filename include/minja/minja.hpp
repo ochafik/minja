@@ -1521,6 +1521,10 @@ public:
             vargs.expectArgs("endswith method", {1, 1}, {0, 0});
             auto suffix = vargs.args[0].get<std::string>();
             return suffix.length() <= str.length() && std::equal(suffix.rbegin(), suffix.rend(), str.rbegin());
+          } else if (method->get_name() == "startswith") {
+            vargs.expectArgs("startswith method", {1, 1}, {0, 0});
+            auto prefix = vargs.args[0].get<std::string>();
+            return prefix.length() <= str.length() && std::equal(prefix.begin(), prefix.end(), str.begin());
           } else if (method->get_name() == "title") {
             vargs.expectArgs("title method", {0, 0}, {0, 0});
             auto res = str;
