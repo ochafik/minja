@@ -186,6 +186,9 @@ TEST(SyntaxTest, SimpleCases) {
         render(R"({{ 1 | safe }})", {}, {}));
     EXPECT_EQ(
         "True,False",
+        render(R"({{ 'abc'.startswith('ab') }},{{ ''.startswith('a') }})", {}, {}));
+    EXPECT_EQ(
+        "True,False",
         render(R"({{ 'abc'.endswith('bc') }},{{ ''.endswith('a') }})", {}, {}));
     EXPECT_EQ(
         "[]",
@@ -217,6 +220,18 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         "False",
         render(R"({% set foo = true %}{{ not foo is defined }})", {}, {}));
+    EXPECT_EQ(
+        "True",
+        render(R"({% set foo = true %}{{ foo is true }})", {}, {}));
+    EXPECT_EQ(
+        "False",
+        render(R"({% set foo = true %}{{ foo is false }})", {}, {}));
+    EXPECT_EQ(
+        "True",
+        render(R"({% set foo = false %}{{ foo is not true }})", {}, {}));
+    EXPECT_EQ(
+        "False",
+        render(R"({% set foo = false %}{{ foo is not false }})", {}, {}));
     EXPECT_EQ(
         R"({"a": "b"})",
         render(R"({{ {"a": "b"} | tojson }})", {}, {}));
@@ -465,6 +480,9 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         "[1, 2, 3][0, 1][1, 2]",
         render("{% set x = [0, 1, 2, 3] %}{{ x[1:] }}{{ x[:2] }}{{ x[1:3] }}", {}, {}));
+    EXPECT_EQ(
+        "[3, 2, 1, 0][3, 2, 1][2, 1, 0][2, 1]",
+        render("{% set x = [0, 1, 2, 3] %}{{ x[::-1] }}{{ x[:0:-1] }}{{ x[2::-1] }}{{ x[2:0:-1] }}", {}, {}));
     EXPECT_EQ(
         "a",
         render("{{ ' a  ' | trim }}", {}, {}));
