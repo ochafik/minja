@@ -323,9 +323,9 @@ set(MODEL_IDS
     Qwen/Qwen3-235B-A22B-Instruct-2507
     Qwen/Qwen3-235B-A22B-Thinking-2507
     Qwen/Qwen3-Coder-30B-A3B-Instruct
+    Qwen/QwQ-32B
 
     # Broken, TODO:
-    # Qwen/QwQ-32B
     # ai21labs/AI21-Jamba-1.5-Large        # https://github.com/google/minja/issues/8
     # Almawave/Velvet-14B
     # deepseek-ai/DeepSeek-R1
