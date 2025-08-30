@@ -525,6 +525,11 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         "[\n  1\n]",
         render("{% set x = [] %}{% set _ = x.append(1) %}{{ x | tojson(indent=2) }}", {}, {}));
+    if (!getenv("USE_JINJA2")) {
+        EXPECT_EQ(
+            "\"\\u00e9\"",
+            render("{{ \"é\" | tojson(ensure_ascii=True) }}", {}, {}));
+    }
     EXPECT_EQ(
         "True",
         render("{{ not [] }}", {}, {}));

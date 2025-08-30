@@ -74,9 +74,9 @@ private:
   Value(const std::shared_ptr<CallableType> & callable) : object_(std::make_shared<ObjectType>()), callable_(callable) {}
 
   /* Python-style string repr */
-  static void dump_string(const json & primitive, std::ostringstream & out, char string_quote = '\'') {
+  static void dump_string(const json & primitive, std::ostringstream & out, char string_quote = '\'', bool ensure_ascii = false) {
     if (!primitive.is_string()) throw std::runtime_error("Value is not a string: " + primitive.dump());
-    auto s = primitive.dump();
+    auto s = primitive.dump(/* indent= */ -1, /* indent_char= */ ' ', ensure_ascii);
     if (string_quote == '"' || s.find('\'') != std::string::npos) {
       out << s;
       return;
@@ -95,7 +95,7 @@ private:
     }
     out << string_quote;
   }
-  void dump(std::ostringstream & out, int indent = -1, int level = 0, bool to_json = false) const {
+  void dump(std::ostringstream & out, int indent = -1, int level = 0, bool to_json = false, bool ensure_ascii = false) const {
     auto print_indent = [&](int level) {
       if (indent > 0) {
           out << "\n";
@@ -116,7 +116,7 @@ private:
       print_indent(level + 1);
       for (size_t i = 0; i < array_->size(); ++i) {
         if (i) print_sub_sep();
-        (*array_)[i].dump(out, indent, level + 1, to_json);
+        (*array_)[i].dump(out, indent, level + 1, to_json, ensure_ascii);
       }
       print_indent(level);
       out << "]";
@@ -126,12 +126,12 @@ private:
       for (auto begin = object_->begin(), it = begin; it != object_->end(); ++it) {
         if (it != begin) print_sub_sep();
         if (it->first.is_string()) {
-          dump_string(it->first, out, string_quote);
+          dump_string(it->first, out, string_quote, ensure_ascii);
         } else {
-          out << string_quote << it->first.dump() << string_quote;
+          out << string_quote << it->first.dump(/* indent= */ -1, /* indent_char= */ ' ', ensure_ascii) << string_quote;
         }
         out << ": ";
-        it->second.dump(out, indent, level + 1, to_json);
+        it->second.dump(out, indent, level + 1, to_json, ensure_ascii);
       }
       print_indent(level);
       out << "}";
@@ -140,9 +140,9 @@ private:
     } else if (is_boolean() && !to_json) {
       out << (this->to_bool() ? "True" : "False");
     } else if (is_string() && !to_json) {
-      dump_string(primitive_, out, string_quote);
+      dump_string(primitive_, out, string_quote, ensure_ascii);
     } else {
-      out << primitive_.dump();
+      out << primitive_.dump(/* indent= */ -1, /* indent_char= */ ' ', ensure_ascii);
     }
   }
 
@@ -445,9 +445,9 @@ public:
     throw std::runtime_error("get<T> not defined for this value type: " + dump());
   }
 
-  std::string dump(int indent=-1, bool to_json=false) const {
+  std::string dump(int indent=-1, bool to_json=false, bool ensure_ascii=false) const {
     std::ostringstream out;
-    dump(out, indent, 0, to_json);
+    dump(out, indent, 0, to_json, ensure_ascii);
     return out.str();
   }
 
@@ -2657,8 +2657,9 @@ inline std::shared_ptr<Context> Context::builtins() {
   globals.set("raise_exception", simple_function("raise_exception", { "message" }, [](const std::shared_ptr<Context> &, Value & args) -> Value {
     throw std::runtime_error(args.at("message").get<std::string>());
   }));
-  globals.set("tojson", simple_function("tojson", { "value", "indent" }, [](const std::shared_ptr<Context> &, Value & args) {
-    return Value(args.at("value").dump(args.get<int64_t>("indent", -1), /* to_json= */ true));
+  globals.set("tojson", simple_function("tojson", { "value", "indent", "ensure_ascii" }, [](const std::shared_ptr<Context> &, Value & args) {
+    const auto ensure_ascii = args.get<bool>("ensure_ascii", false);
+    return Value(args.at("value").dump(args.get<int64_t>("indent", -1), /* to_json= */ true, ensure_ascii));
   }));
   globals.set("items", simple_function("items", { "object" }, [](const std::shared_ptr<Context> &, Value & args) {
     auto items = Value::array();
