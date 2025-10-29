@@ -33,6 +33,7 @@
 
 using json = nlohmann::ordered_json;
 
+
 namespace minja {
 
 class Context;
@@ -55,7 +56,7 @@ inline std::string normalize_newlines(const std::string & s) {
 }
 
 /* Values that behave roughly like in Python. */
-class Value : public std::enable_shared_from_this<Value> {
+class Value {
 public:
   using CallableType = std::function<Value(const std::shared_ptr<Context> &, ArgumentsValue &)>;
   using FilterType = std::function<Value(const std::shared_ptr<Context> &, ArgumentsValue &)>;
@@ -158,12 +159,14 @@ public:
   Value(const json & v) {
     if (v.is_object()) {
       auto object = std::make_shared<ObjectType>();
+      object->reserve(v.size());
       for (auto it = v.begin(); it != v.end(); ++it) {
-        (*object)[it.key()] = it.value();
+        object->emplace_back(it.key(), Value(it.value()));
       }
       object_ = std::move(object);
     } else if (v.is_array()) {
       auto array = std::make_shared<ArrayType>();
+      array->reserve(v.size());
       for (const auto& item : v) {
         array->push_back(Value(item));
       }
@@ -610,7 +613,7 @@ static std::string error_location_suffix(const std::string & source, size_t pos)
   return out.str();
 }
 
-class Context : public std::enable_shared_from_this<Context> {
+class Context {
   protected:
     Value values_;
     std::shared_ptr<Context> parent_;
@@ -850,12 +853,12 @@ struct LoopControlTemplateToken : public TemplateToken {
 
 struct CallTemplateToken : public TemplateToken {
     std::shared_ptr<Expression> expr;
-    CallTemplateToken(const Location & loc, SpaceHandling pre, SpaceHandling post, std::shared_ptr<Expression> && e) 
+    CallTemplateToken(const Location & loc, SpaceHandling pre, SpaceHandling post, std::shared_ptr<Expression> && e)
         : TemplateToken(Type::Call, loc, pre, post), expr(std::move(e)) {}
 };
 
 struct EndCallTemplateToken : public TemplateToken {
-    EndCallTemplateToken(const Location & loc, SpaceHandling pre, SpaceHandling post) 
+    EndCallTemplateToken(const Location & loc, SpaceHandling pre, SpaceHandling post)
         : TemplateToken(Type::EndCall, loc, pre, post) {}
 };
 
@@ -1082,7 +1085,7 @@ public:
                 auto & arg = args.args[i];
                 if (i >= params.size()) throw std::runtime_error("Too many positional arguments for macro " + name->get_name());
                 param_set[i] = true;
-                auto & param_name = params[i].first;
+                const auto & param_name = params[i].first;
                 execution_context->set(param_name, arg);
             }
             for (auto & [arg_name, value] : args.kwargs) {
