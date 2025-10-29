@@ -212,6 +212,26 @@ Main limitations (non-exhaustive list):
         ./scripts/fuzzing_tests.sh
         ```
 
+- Sanitizer tests:
+
+    ```bash
+    for sanitizer in ADDRESS THREAD UNDEFINED ; do
+        docker run --rm \
+            -v "$PWD":/src:ro \
+            -v "$PWD/build-sanitizer-${sanitizer}":/src/build \
+            -w /src \
+            "$(echo "
+                FROM ghcr.io/astral-sh/uv:debian-slim
+                RUN apt-get update && apt-get install -y build-essential libcurl4-openssl-dev cmake clang-tidy
+            " | docker build . -q -f - )" \
+            bash -c "
+                cmake -B build -DCMAKE_BUILD_TYPE=Debug -DMINJA_SANITIZER=${sanitizer} && \
+                cmake --build build -j --config Debug && \
+                ctest --test-dir build -j -C Debug --output-on-failure
+            "
+    done
+    ```
+
 - If your model's template doesn't run fine, please consider the following before [opening a bug](https://github.com/googlestaging/minja/issues/new):
 
     - Is the template using any unsupported filter / test / method / global function, and which one(s)?
