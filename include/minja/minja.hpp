@@ -1060,11 +1060,18 @@ public:
           }
         }
     }
-    void do_render(std::ostringstream &, const std::shared_ptr<Context> & macro_context) const override {
+    void do_render(std::ostringstream &, const std::shared_ptr<Context> & context) const override {
         if (!name) throw std::runtime_error("MacroNode.name is null");
         if (!body) throw std::runtime_error("MacroNode.body is null");
-        auto callable = Value::callable([this, macro_context](const std::shared_ptr<Context> & call_context, ArgumentsValue & args) {
-            auto execution_context = Context::make(Value::object(), macro_context);
+
+        // Use init-capture to avoid dangling 'this' pointer and circular references
+        auto callable = Value::callable([weak_context = std::weak_ptr<Context>(context),
+                                         name = name, params = params, body = body,
+                                         named_param_positions = named_param_positions]
+                                        (const std::shared_ptr<Context> & call_context, ArgumentsValue & args) {
+            auto context_locked = weak_context.lock();
+            if (!context_locked) throw std::runtime_error("Macro context no longer valid");
+            auto execution_context = Context::make(Value::object(), context_locked);
 
             if (call_context->contains("caller")) {
                 execution_context->set("caller", call_context->get("caller"));
@@ -1640,13 +1647,17 @@ public:
     void do_render(std::ostringstream & out, const std::shared_ptr<Context> & context) const override {
         if (!expr) throw std::runtime_error("CallNode.expr is null");
         if (!body) throw std::runtime_error("CallNode.body is null");
-        
-        auto caller = Value::callable([this, context](const std::shared_ptr<Context> &, ArgumentsValue &) -> Value {
-            return Value(body->render(context));
+
+        // Use init-capture to avoid dangling 'this' pointer and circular references
+        auto caller = Value::callable([weak_context = std::weak_ptr<Context>(context), body=body]
+                                      (const std::shared_ptr<Context> &, ArgumentsValue &) -> Value {
+            auto context_locked = weak_context.lock();
+            if (!context_locked) throw std::runtime_error("Caller context no longer valid");
+            return Value(body->render(context_locked));
         });
-        
+
         context->set("caller", caller);
-        
+
         auto call_expr = dynamic_cast<CallExpr*>(expr.get());
         if (!call_expr) {
             throw std::runtime_error("Invalid call block syntax - expected function call");
@@ -1657,7 +1668,7 @@ public:
             throw std::runtime_error("Call target must be callable: " + function.dump());
         }
         ArgumentsValue args = call_expr->args.evaluate(context);
-        
+
         Value result = function.call(context, args);
         out << result.to_str();
     }
@@ -2215,7 +2226,7 @@ private:
               }
             }
           }
-  
+
           if ((has_first_colon || has_second_colon)) {
             index = std::make_shared<SliceExpr>(slice_loc, std::move(start), std::move(end), std::move(step));
           } else {
