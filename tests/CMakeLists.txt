@@ -91,16 +91,16 @@ set(MODEL_IDS
     #
     # For Gated models, you'll need to run `huggingface-cli login` (and be granted access) to download their template.
 
-    BEE/spoke-data-tFINE-900m-instruct-orpo
+    BEE-spoke-data/tFINE-900m-instruct-orpo
     CohereForAI/aya-expanse-8b
     CohereForAI/c4ai-command-r-plus
     CohereForAI/c4ai-command-r7b-12-2024
-    Delta/Vector-Rei-12B
+    Delta-Vector/Rei-12B
     HelpingAI/HAI-SER
     HuggingFaceTB/SmolLM2-1.7B-Instruct
     HuggingFaceTB/SmolLM3-3B
     Infinigence/Megrez-3B-Instruct
-    LGAI/EXAONE-EXAONE-3.5-7.8B-Instruct
+    LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct
     MiniMaxAI/MiniMax-Text-01
     MiniMaxAI/MiniMax-VL-01
     NousResearch/Hermes-3-Llama-3.1-70B
@@ -125,7 +125,7 @@ set(MODEL_IDS
     THUDM/glm-edge-1.5b-chat
     TheBloke/FusionNet_34Bx2_MoE-AWQ
     TinyLlama/TinyLlama-1.1B-Chat-v1.0
-    UCLA/AGI-Mistral7B-PairRM-SPPO-Iter3
+    UCLA-AGI/Mistral7B-PairRM-SPPO-Iter3
     abacusai/Fewshot-Metamath-OrcaVicuna-Mistral
     allenai/Llama-3.1-Tulu-3-8B
     arcee-ai/Virtuoso-Medium-v2
@@ -240,7 +240,7 @@ endforeach()
 # Test to ensure no duplicate templates exist
 add_test(
     NAME test-no-duplicate-templates
-    COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_no_duplicate_templates.py ${CMAKE_SOURCE_DIR}/tests/templates
+    COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_no_duplicate_templates.py ${CMAKE_CURRENT_BINARY_DIR}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 

@@ -106,7 +106,7 @@ TEST(CapabilitiesTest, Qwen3Coder) {
 
 #ifndef _WIN32
 TEST(CapabilitiesTest, DeepSeekR1Distill) {
-    auto caps = get_caps("tests/deepseek-ai-DeepSeek-R1-Distill-Qwen-32B.jinja");
+    auto caps = get_caps("tests/deepseek-ai-DeepSeek-R1-Distill-Llama-70B.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_FALSE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
@@ -159,7 +159,7 @@ TEST(CapabilitiesTest, MetaLlama3_2_3BInstruct) {
 }
 
 TEST(CapabilitiesTest, MetaLlama3_3_70BInstruct) {
-    auto caps = get_caps("tests/meta-llama-Llama-3.3-70B-Instruct.jinja");
+    auto caps = get_caps("tests/meta-llama-Llama-3.1-8B-Instruct.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_TRUE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
@@ -185,7 +185,7 @@ TEST(CapabilitiesTest, MiniMaxAIText01) {
 }
 
 TEST(CapabilitiesTest, Mistral7BInstruct) {
-    auto caps = get_caps("tests/mistralai-Mistral-7B-Instruct-v0.2.jinja");
+    auto caps = get_caps("tests/mistralai-Mistral-7B-Instruct-v0.1.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_FALSE(caps.supports_tools);
     EXPECT_FALSE(caps.supports_tool_calls);
@@ -224,7 +224,7 @@ TEST(CapabilitiesTest, NousResearchHermes3Llama3_1_70BToolUse) {
 }
 
 TEST(CapabilitiesTest, NousResearchHermes2ProLlama3_8BToolUse) {
-    auto caps = get_caps("tests/NousResearch-Hermes-2-Pro-Llama-3-8B-tool_use.jinja");
+    auto caps = get_caps("tests/NousResearch-Hermes-3-Llama-3.1-70B-tool_use.jinja");
     EXPECT_TRUE(caps.supports_system_role);
     EXPECT_TRUE(caps.supports_tools);
     EXPECT_TRUE(caps.supports_tool_calls);
