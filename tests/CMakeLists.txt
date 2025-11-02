@@ -315,7 +315,6 @@ set(MODEL_IDS
     unsloth/DeepSeek-R1-Distill-Llama-8B
     unsloth/DeepSeek-R1-Distill-Llama-8B-unsloth-bnb-4bit
     unsloth/Mistral-Small-24B-Instruct-2501-unsloth-bnb-4bit
-    unsloth/MiniMax-M2
     upstage/solar-pro-preview-instruct
     ValiantLabs/Llama3.1-8B-Enigma
     xwen-team/Xwen-72B-Chat
@@ -336,6 +335,7 @@ set(MODEL_IDS
     # HuggingFaceTB/SmolVLM-256M-Instruct
     # HuggingFaceTB/SmolVLM-500M-Instruct
     # HuggingFaceTB/SmolVLM-Instruct
+    # unsloth/MiniMax-M2 # https://github.com/ochafik/minja/pull/7#issuecomment-3478459580
     # meta-llama/Llama-3.2-11B-Vision-Instruct
     # unsloth/DeepSeek-R1
 )
