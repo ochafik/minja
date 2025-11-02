@@ -205,7 +205,7 @@ class chat_template {
             make_tool_calls_msg(json::array({make_tool_call("ipython", dummy_args_obj)})),
         }), {}, false);
         auto tool_call_renders_obj_arguments = contains(out, "<parameter=argument_needle>") || contains(out, "\"argument_needle\":") 
-            || contains(out, "'argument_needle':") || contains(out, "<parameter name=\"argument_needle\">");
+          || contains(out, "'argument_needle':") || contains(out, "<parameter name=\"argument_needle\">") || contains(out, ">argument_needle<");
 
         caps_.supports_tool_calls = tool_call_renders_str_arguments || tool_call_renders_obj_arguments;
         caps_.requires_object_arguments = !tool_call_renders_str_arguments && tool_call_renders_obj_arguments;

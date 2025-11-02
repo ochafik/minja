@@ -315,6 +315,7 @@ set(MODEL_IDS
     unsloth/DeepSeek-R1-Distill-Llama-8B
     unsloth/DeepSeek-R1-Distill-Llama-8B-unsloth-bnb-4bit
     unsloth/Mistral-Small-24B-Instruct-2501-unsloth-bnb-4bit
+    unsloth/MiniMax-M2
     upstage/solar-pro-preview-instruct
     ValiantLabs/Llama3.1-8B-Enigma
     xwen-team/Xwen-72B-Chat
