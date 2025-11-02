@@ -335,6 +335,7 @@ set(MODEL_IDS
     # HuggingFaceTB/SmolVLM-256M-Instruct
     # HuggingFaceTB/SmolVLM-500M-Instruct
     # HuggingFaceTB/SmolVLM-Instruct
+    # unsloth/MiniMax-M2 # https://github.com/ochafik/minja/pull/7#issuecomment-3478459580
     # meta-llama/Llama-3.2-11B-Vision-Instruct
     # unsloth/DeepSeek-R1
 )
