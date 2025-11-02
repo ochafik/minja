@@ -50,8 +50,16 @@ jobs:
           thread,
           undefined,
         ]
+        exclude:
+          # Sanitizers are not supported on Windows with LLVM targeting MSVC
+          - setup: { os: windows-latest, build: 'llvm-arm64', defines: '-G "Ninja Multi-Config" -D CMAKE_TOOLCHAIN_FILE=cmake/arm64-windows-llvm.cmake', test: false }
+            sanitizer: address
+          - setup: { os: windows-latest, build: 'llvm-arm64', defines: '-G "Ninja Multi-Config" -D CMAKE_TOOLCHAIN_FILE=cmake/arm64-windows-llvm.cmake', test: false }
+            sanitizer: thread
+          - setup: { os: windows-latest, build: 'llvm-arm64', defines: '-G "Ninja Multi-Config" -D CMAKE_TOOLCHAIN_FILE=cmake/arm64-windows-llvm.cmake', test: false }
+            sanitizer: undefined
     runs-on: ${{ matrix.setup.os }}
-    name: ${{ matrix.setup.os }}-${{ matrix.setup.build }}-${{ matrix.type }}-sanitizer-${{ matrix.sanitizer }} 
+    name: ${{ matrix.setup.os }}-${{ matrix.setup.build }}-${{ matrix.type }}-sanitizer-${{ matrix.sanitizer }}
     timeout-minutes: 30
 
     steps:

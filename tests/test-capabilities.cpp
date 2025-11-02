@@ -257,3 +257,15 @@ TEST(CapabilitiesTest, CommandRPlusToolUse) {
     // EXPECT_TRUE(caps.requires_non_null_content);
     EXPECT_FALSE(caps.requires_typed_content);
 }
+
+TEST(CapabilitiesTest, GLM46) {
+    auto caps = get_caps("tests/zai-org-GLM-4.6.jinja");
+    EXPECT_TRUE(caps.supports_system_role);
+    EXPECT_TRUE(caps.supports_tools);
+    EXPECT_TRUE(caps.supports_tool_calls);
+    EXPECT_TRUE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_parallel_tool_calls);
+    EXPECT_TRUE(caps.requires_object_arguments);
+    // EXPECT_TRUE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_typed_content);
+}

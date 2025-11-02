@@ -47,7 +47,7 @@ set(MINJA_SANITIZERS thread address undefined none)
 set(MINJA_SANITIZER none CACHE STRING "minja: sanitizer to use")
 set_property(CACHE MINJA_SANITIZER PROPERTY STRINGS ${MINJA_SANITIZERS})
 
-if (NOT MSVC AND NOT MINJA_SANITIZER STREQUAL "none")
+if (NOT MSVC AND NOT CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC" AND NOT MINJA_SANITIZER STREQUAL "none")
     message(STATUS "Using -fsanitize=${MINJA_SANITIZER}")
     add_compile_options("-fsanitize=${MINJA_SANITIZER}")
     link_libraries     ("-fsanitize=${MINJA_SANITIZER}")
