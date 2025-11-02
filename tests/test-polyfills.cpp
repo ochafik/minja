@@ -391,7 +391,7 @@ TEST(PolyfillTest, ToolPolyfill) {
 
 #ifndef _WIN32
 TEST(ToolTest, DeepSeekR1) {
-    chat_template tmpl(read_file("tests/deepseek-ai-DeepSeek-R1-Distill-Qwen-32B.jinja"), "", "");
+    chat_template tmpl(read_file("tests/deepseek-ai-DeepSeek-R1-Distill-Llama-70B.jinja"), "", "");
 
     auto inputs = chat_template_inputs();
     inputs.messages = json::array({message_tool});
@@ -476,7 +476,7 @@ TEST(ToolTest, NousResearchHermes3) {
 }
 
 TEST(ToolTest, NousResearchHermes2) {
-    chat_template tmpl(read_file("tests/NousResearch-Hermes-2-Pro-Llama-3-8B-tool_use.jinja"), "", "");
+    chat_template tmpl(read_file("tests/NousResearch-Hermes-3-Llama-3.1-70B-tool_use.jinja"), "", "");
 
     auto inputs = chat_template_inputs();
     inputs.messages = json::array({message_tool});
@@ -495,7 +495,7 @@ TEST(ToolTest, NousResearchHermes2) {
 }
 
 TEST(ToolTest, Llama3_3) {
-    chat_template tmpl(read_file("tests/meta-llama-Llama-3.3-70B-Instruct.jinja"), "", "");
+    chat_template tmpl(read_file("tests/meta-llama-Llama-3.1-8B-Instruct.jinja"), "", "");
 
     auto inputs = chat_template_inputs();
     inputs.messages = json::array({message_tool});
