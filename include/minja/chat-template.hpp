@@ -96,10 +96,10 @@ class chat_template {
             opts.apply_polyfills = false;
 
             auto prompt = apply(inputs, opts);
-            fprintf(stderr, "try_raw_render: %s\n", prompt.c_str());
+            // fprintf(stderr, "try_raw_render: %s\n", prompt.c_str());
             return prompt;
         } catch (const std::exception & e) {
-            fprintf(stderr, "try_raw_render error: %s\n", e.what());
+            // fprintf(stderr, "try_raw_render error: %s\n", e.what());
             return "";
         }
     }
