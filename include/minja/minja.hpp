@@ -2762,6 +2762,10 @@ inline std::shared_ptr<Context> Context::builtins() {
     auto & text = args.at("text");
     return text.is_null() ? text : Value(strip(text.get<std::string>()));
   }));
+  globals.set("capitalize", simple_function("capitalize", { "text" }, [](const std::shared_ptr<Context> &, Value & args) {
+    auto & text = args.at("text");
+    return text.is_null() ? text : Value(capitalize(text.get<std::string>()));
+  }));
   auto char_transform_function = [](const std::string & name, const std::function<char(char)> & fn) {
     return simple_function(name, { "text" }, [=](const std::shared_ptr<Context> &, Value & args) {
       auto text = args.at("text");
