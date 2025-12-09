@@ -1467,6 +1467,7 @@ static std::vector<std::string> split(const std::string & s, const std::string &
 static std::string capitalize(const std::string & s) {
   if (s.empty()) return s;
   auto result = s;
+  std::transform(result.begin(), result.end(), result.begin(), ::tolower);
   result[0] = std::toupper(result[0]);
   return result;
 }
