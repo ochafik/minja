@@ -168,6 +168,7 @@ set(MODEL_IDS
     mistralai/Mistral-Large-Instruct-2411
     mistralai/Mistral-Nemo-Instruct-2407
     mistralai/Mistral-Small-24B-Instruct-2501
+    mistralai/Ministral-3-14B-Reasoning-2512
     mkurman/Qwen2.5-14B-DeepSeek-R1-1M
     mlabonne/AlphaMonarch-7B
     mlx-community/Josiefied-Qwen2.5-0.5B-Instruct-abliterated-v1-float32

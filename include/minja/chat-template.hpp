@@ -40,6 +40,8 @@ struct chat_template_caps {
     bool requires_object_arguments = false;
     // CohereForAI/c4ai-command-r-plus simple variant
     bool requires_non_null_content = false;
+    // mistralai/Ministral-3-14B-Reasoning-2512
+    bool requires_non_empty_content = false;
     // MiniMaxAI/MiniMax-Text-01 special
     bool requires_typed_content = false;
 };
@@ -171,13 +173,24 @@ class chat_template {
         };
         auto out_empty = render_with_content("");
         auto out_null = render_with_content(json());
-        caps_.requires_non_null_content = contains(out_empty, user_needle) && !contains(out_null, user_needle);
-        
+        auto out_nonempty = render_with_content("<Assistant Needle>");
+        caps_.requires_non_empty_content = contains(out_nonempty, user_needle) && !contains(out_empty, user_needle) && !contains(out_null, user_needle);
+        caps_.requires_non_null_content = (contains(out_empty, user_needle) && !contains(out_null, user_needle)) || caps_.requires_non_empty_content;
+
         json j_null;
+        auto assistant_content = [&](const json & content) {
+            if (content.is_null() && caps_.requires_non_null_content) {
+                return json("");
+            }
+            if ((content.is_null() || (content.is_string() && content.empty())) && caps_.requires_non_empty_content) {
+                return json("<Assitant Needle>");
+            }
+            return content;
+        };
         auto make_tool_calls_msg = [&](const json & tool_calls) {
             return json {
                 {"role", "assistant"},
-                {"content", caps_.requires_non_null_content? "" : j_null},
+                {"content", assistant_content(j_null)},
                 {"tool_calls", tool_calls},
             };
         };
@@ -250,7 +263,7 @@ class chat_template {
                 };
                 const json tool_call_msg {
                     {"role", "assistant"},
-                    {"content", caps_.requires_non_null_content ? "" : j_null},
+                    {"content", assistant_content(j_null)},
                     {"tool_calls", json::array({
                         {
                             // TODO: detect if requires numerical id or fixed length == 6 like Nemo
