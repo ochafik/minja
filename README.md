@@ -1,6 +1,6 @@
 # minja.hpp - A minimalistic C++ Jinja templating engine for LLM chat templates
 
-_**This is not an official Google product**_
+_**Used to be at https://github.com/google/minja, but I've left Google and I'll only maintain my fork from now on**_
 
 Minja is a minimalistic reimplementation of the [Jinja](https://github.com/pallets/jinja/) templating engine to integrate in/with C++ LLM projects (it's used in [llama.cpp](https://github.com/ggerganov/llama.cpp/pull/11016), [Jan](https://jan.ai/) (through [cortex.cpp](https://github.com/menloresearch/cortex.cpp/pull/1814)), [GPT4All](https://github.com/nomic-ai/gpt4all/pull/3433) and [Docker Model Runner](https://github.com/docker/model-runner)).
 
