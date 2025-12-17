@@ -93,7 +93,7 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ("HELLO WORLD", render("{{ 'hello world'.upper() }}", {}, {}));
     EXPECT_EQ("MIXED", render("{{ 'MiXeD'.upper() }}", {}, {}));
     EXPECT_EQ("", render("{{ ''.upper() }}", {}, {}));
-    
+
     EXPECT_EQ("hello world", render("{{ 'HELLO WORLD'.lower() }}", {}, {}));
     EXPECT_EQ("mixed", render("{{ 'MiXeD'.lower() }}", {}, {}));
     EXPECT_EQ("", render("{{ ''.lower() }}", {}, {}));
@@ -235,6 +235,9 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         "2",
         render(R"({{ range(3) | last }})", {}, {}));
+    EXPECT_EQ(
+        "0",
+        render(R"({{ range(3) | first }})", {}, {}));
     EXPECT_EQ(
         "True",
         render(R"({% set foo = true %}{{ foo is defined }})", {}, {}));
@@ -455,7 +458,7 @@ TEST(SyntaxTest, SimpleCases) {
                 {%- endfor -%}
             {%- endcall -%}
         )", {}, {}));
-    
+
     EXPECT_EQ(
         "\\n\\nclass A:\\n  b: 1\\n  c: 2\\n",
         render(R"(

@@ -2752,6 +2752,12 @@ inline std::shared_ptr<Context> Context::builtins() {
     }
     return items;
   }));
+  globals.set("first", simple_function("first", { "items" }, [](const std::shared_ptr<Context> &, Value & args) {
+    auto items = args.at("items");
+    if (!items.is_array()) throw std::runtime_error("object is not a list");
+    if (items.empty()) return Value();
+    return items.at(0);
+  }));
   globals.set("last", simple_function("last", { "items" }, [](const std::shared_ptr<Context> &, Value & args) {
     auto items = args.at("items");
     if (!items.is_array()) throw std::runtime_error("object is not a list");
