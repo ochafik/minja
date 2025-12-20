@@ -141,6 +141,9 @@ TEST(SyntaxTest, SimpleCases) {
         "[1, 2, 3]",
         render("{{ [1] + [2, 3] }}", {}, {}));
     EXPECT_EQ(
+        "Abc",
+        render("{{ 'aBc' | capitalize }}", {}, {}));
+    EXPECT_EQ(
         "abc",
         render("{{ 'AbC' | lower }}", {}, {}));
     EXPECT_EQ(
