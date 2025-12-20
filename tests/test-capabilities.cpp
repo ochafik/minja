@@ -58,7 +58,7 @@ static minja::chat_template_caps get_caps(const std::string &path)
     print("supports_parallel_tool_calls", caps.supports_parallel_tool_calls);
     print("requires_object_arguments",    caps.requires_object_arguments);
     print("requires_non_null_content",    caps.requires_non_null_content);
-    // print("requires_non_null_content",    caps.requires_non_null_content);
+    print("requires_non_empty_content",   caps.requires_non_empty_content);
     print("requires_typed_content",       caps.requires_typed_content);
     std::cout << "}\n" << std::endl;
 
@@ -75,6 +75,7 @@ TEST(CapabilitiesTest, Gemma7b) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_non_empty_content);
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
@@ -88,6 +89,7 @@ TEST(CapabilitiesTest, QwQ32B) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_TRUE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_non_empty_content);  // non_null is true, so non_empty should be false
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
@@ -246,6 +248,7 @@ TEST(CapabilitiesTest, CommandRPlusDefault) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_TRUE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_non_empty_content);
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
@@ -259,6 +262,7 @@ TEST(CapabilitiesTest, CommandRPlusRag) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_TRUE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_non_empty_content);
     EXPECT_FALSE(caps.requires_typed_content);
 }
 
@@ -285,5 +289,21 @@ TEST(CapabilitiesTest, GLM46) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_non_empty_content);
+    EXPECT_FALSE(caps.requires_typed_content);
+}
+
+// Test for templates that reject both null AND empty assistant content (like Mistral 3)
+TEST(CapabilitiesTest, SyntheticRequiresNonEmptyContent) {
+    auto caps = get_caps("tests/synthetic-requires-non-empty-content.jinja");
+    EXPECT_TRUE(caps.supports_system_role);
+    EXPECT_FALSE(caps.supports_tools);
+    EXPECT_FALSE(caps.supports_tool_calls);
+    EXPECT_FALSE(caps.supports_tool_call_id);
+    EXPECT_FALSE(caps.supports_tool_responses);
+    EXPECT_FALSE(caps.supports_parallel_tool_calls);
+    EXPECT_FALSE(caps.requires_object_arguments);
+    EXPECT_FALSE(caps.requires_non_null_content);  // Should be false when non_empty is true
+    EXPECT_TRUE(caps.requires_non_empty_content);   // The key capability we're testing
     EXPECT_FALSE(caps.requires_typed_content);
 }

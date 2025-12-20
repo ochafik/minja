@@ -84,6 +84,7 @@ class TemplateCaps:
     supports_tool_call_id: bool = False
     requires_object_arguments: bool = False
     requires_non_null_content: bool = False
+    requires_non_empty_content: bool = False  # Mistral 3 series - rejects both null AND empty
     requires_typed_content: bool = False
 
     def to_json(self):
@@ -96,6 +97,7 @@ class TemplateCaps:
             "supports_tool_call_id": self.supports_tool_call_id,
             "requires_object_arguments": self.requires_object_arguments,
             # "requires_non_null_content": self.requires_non_null_content,
+            "requires_non_empty_content": self.requires_non_empty_content,
             "requires_typed_content": self.requires_typed_content,
         }, indent=2)
 
@@ -174,11 +176,24 @@ class chat_template:
         caps.requires_non_null_content = \
             (user_needle in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": ''}])) \
             and (user_needle not in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": None}]))
+        # Mistral 3 rejects both null AND empty content
+        caps.requires_non_empty_content = \
+            (user_needle not in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": ''}])) \
+            and (user_needle not in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": None}]))
+
+        # Helper to get appropriate assistant content based on capabilities
+        # Check more restrictive first (non_empty before non_null)
+        def assistant_content(content):
+            if (content is None or content == '') and caps.requires_non_empty_content:
+                return "<Assistant Placeholder>"
+            if content is None and caps.requires_non_null_content:
+                return ""
+            return content
 
         def make_tool_calls_msg(tool_calls, content=None):
             return {
                 "role": "assistant",
-                "content": "" if content is None and caps.requires_non_null_content else content,
+                "content": assistant_content(content),
                 "tool_calls": tool_calls,
             }
         def make_tool_call(tool_name, arguments):
@@ -244,7 +259,8 @@ class chat_template:
                 args = {"arg1": "some_value"}
                 tool_call_msg = {
                     "role": "assistant",
-                    "content": "" if caps.requires_non_null_content else None,
+                    # Priority: non_empty (most restrictive) > non_null > null
+                    "content": "<Assistant Placeholder>" if caps.requires_non_empty_content else ("" if caps.requires_non_null_content else None),
                     "tool_calls": [
                         {
                             "id": "call_1___",
@@ -291,7 +307,8 @@ class chat_template:
                 or not caps.supports_tool_calls \
                 or caps.requires_object_arguments \
             )) \
-            or caps.requires_typed_content
+            or caps.requires_typed_content \
+            or caps.requires_non_empty_content
 
     def apply(self, context: dict):
         assert isinstance(context, dict)
@@ -305,6 +322,14 @@ class chat_template:
                 add_system(context['messages'],
                     f"You can call any of the following tools to satisfy the user's requests: {json.dumps(context['tools'], indent=2)}" +
                     ("\n\nExample tool call syntax:\n\n" + self.tool_call_example + "\n\n" if self.tool_call_example is not None else ""))
+
+            # Transform null/empty assistant content for templates that require non-empty content
+            if caps.requires_non_empty_content:
+                for message in context['messages']:
+                    if message.get('role') == 'assistant':
+                        content = message.get('content')
+                        if content is None or content == '':
+                            message['content'] = "<Assistant Placeholder>"
 
             for message in context['messages']:
                 if 'tool_calls' in message:

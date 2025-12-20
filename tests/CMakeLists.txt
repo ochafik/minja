@@ -72,6 +72,13 @@ target_link_libraries(test-capabilities PRIVATE
 add_test(NAME test-capabilities COMMAND test-capabilities)
 set_tests_properties(test-capabilities PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
+# Copy synthetic test templates to build directory for test-capabilities
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/synthetic-requires-non-empty-content.jinja
+    ${CMAKE_BINARY_DIR}/tests/synthetic-requires-non-empty-content.jinja
+    COPYONLY
+)
+
 add_test(NAME test-syntax-jinja2 COMMAND test-syntax)
 set_tests_properties(test-syntax-jinja2 PROPERTIES ENVIRONMENT "USE_JINJA2=1;PYTHON_EXECUTABLE=${Python_EXECUTABLE};PYTHONPATH=${CMAKE_SOURCE_DIR}")
 

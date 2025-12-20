@@ -171,6 +171,7 @@ static chat_template_options options_no_polyfills() {
     opts.polyfill_tool_responses = false;
     opts.polyfill_object_arguments = false;
     opts.polyfill_typed_content = false;
+    opts.polyfill_non_empty_content = false;
     return opts;
 };
 
@@ -577,3 +578,84 @@ TEST(ToolTest, FirefunctionV2) {
         tmpl.apply(inputs));
 }
 */
+
+// Template that rejects both null AND empty assistant content (like Mistral 3)
+#define TEMPLATE_REQUIRES_NON_EMPTY \
+    "{%- for message in messages -%}\n" \
+    "  {%- if message.role == 'assistant' -%}\n" \
+    "    {%- if message.content is none or message.content == '' -%}\n" \
+    "      {{- raise_exception('Assistant content cannot be null or empty') -}}\n" \
+    "    {%- endif -%}\n" \
+    "  {%- endif -%}\n" \
+    "  {{- '<|' + message.role + '|>' + message.content + '<|end|>\n' -}}\n" \
+    "{%- endfor -%}"
+
+TEST(PolyfillTest, NonEmptyContentDetection) {
+    chat_template tmpl(TEMPLATE_REQUIRES_NON_EMPTY, "", "");
+
+    // Verify capability is detected
+    EXPECT_TRUE(tmpl.original_caps().requires_non_empty_content);
+    EXPECT_FALSE(tmpl.original_caps().requires_non_null_content);
+}
+
+TEST(PolyfillTest, NonEmptyContentPolyfill_NullContent) {
+    chat_template tmpl(TEMPLATE_REQUIRES_NON_EMPTY, "", "");
+
+    // Message with null content - should fail without polyfill
+    json message_assistant_null {
+        {"role", "assistant"},
+        {"content", nullptr},
+    };
+
+    auto inputs = chat_template_inputs();
+    inputs.messages = json::array({message_user_text, message_assistant_null});
+
+    // Without polyfill, template should throw
+    EXPECT_THAT(
+        [&]() { tmpl.apply(inputs, options_no_polyfills()); },
+        ThrowsWithSubstr("Assistant content cannot be null or empty"));
+
+    // With polyfill, should succeed by transforming null -> placeholder
+    auto output = tmpl.apply(inputs);
+    EXPECT_THAT(output, testing::HasSubstr("<Assistant Placeholder>"));
+}
+
+TEST(PolyfillTest, NonEmptyContentPolyfill_EmptyContent) {
+    chat_template tmpl(TEMPLATE_REQUIRES_NON_EMPTY, "", "");
+
+    // Message with empty string content - should fail without polyfill
+    json message_assistant_empty {
+        {"role", "assistant"},
+        {"content", ""},
+    };
+
+    auto inputs = chat_template_inputs();
+    inputs.messages = json::array({message_user_text, message_assistant_empty});
+
+    // Without polyfill, template should throw
+    EXPECT_THAT(
+        [&]() { tmpl.apply(inputs, options_no_polyfills()); },
+        ThrowsWithSubstr("Assistant content cannot be null or empty"));
+
+    // With polyfill, should succeed by transforming empty -> placeholder
+    auto output = tmpl.apply(inputs);
+    EXPECT_THAT(output, testing::HasSubstr("<Assistant Placeholder>"));
+}
+
+TEST(PolyfillTest, NonEmptyContentPolyfill_NonEmptyContent) {
+    chat_template tmpl(TEMPLATE_REQUIRES_NON_EMPTY, "", "");
+
+    // Message with actual content - should work with or without polyfill
+    auto inputs = chat_template_inputs();
+    inputs.messages = json::array({message_user_text, message_assistant_text});
+
+    // Should work without polyfill
+    auto output_no_polyfill = tmpl.apply(inputs, options_no_polyfills());
+    EXPECT_THAT(output_no_polyfill, testing::HasSubstr("Hello, world!"));
+    EXPECT_THAT(output_no_polyfill, testing::Not(testing::HasSubstr("<Assistant Placeholder>")));
+
+    // Should also work with polyfill (content unchanged)
+    auto output = tmpl.apply(inputs);
+    EXPECT_THAT(output, testing::HasSubstr("Hello, world!"));
+    EXPECT_THAT(output, testing::Not(testing::HasSubstr("<Assistant Placeholder>")));
+}

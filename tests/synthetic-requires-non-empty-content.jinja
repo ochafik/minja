@@ -1,0 +1,14 @@
+{# Synthetic template that rejects both null AND empty assistant content (like Mistral 3) #}
+{%- for message in messages %}
+{%- if message.role == 'user' %}
+User: {{ message.content }}
+{%- elif message.role == 'assistant' %}
+{%- if message.content is none or message.content == '' %}
+{{ raise_exception('Assistant content cannot be null or empty') }}
+{%- else %}
+Assistant: {{ message.content }}
+{%- endif %}
+{%- elif message.role == 'system' %}
+System: {{ message.content }}
+{%- endif %}
+{%- endfor %}

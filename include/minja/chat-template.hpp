@@ -40,6 +40,8 @@ struct chat_template_caps {
     bool requires_object_arguments = false;
     // CohereForAI/c4ai-command-r-plus simple variant
     bool requires_non_null_content = false;
+    // Mistral 3 (2512) series - rejects both null AND empty assistant content
+    bool requires_non_empty_content = false;
     // MiniMaxAI/MiniMax-Text-01 special
     bool requires_typed_content = false;
 };
@@ -65,6 +67,7 @@ struct chat_template_options {
     bool polyfill_system_role = true;
     bool polyfill_object_arguments = true;
     bool polyfill_typed_content = true;
+    bool polyfill_non_empty_content = true;
 };
 
 class chat_template {
@@ -172,12 +175,26 @@ class chat_template {
         auto out_empty = render_with_content("");
         auto out_null = render_with_content(json());
         caps_.requires_non_null_content = contains(out_empty, user_needle) && !contains(out_null, user_needle);
-        
+        // Mistral 3 rejects both null AND empty content - need a non-empty placeholder
+        caps_.requires_non_empty_content = !contains(out_empty, user_needle) && !contains(out_null, user_needle);
+
+        // Helper to get appropriate assistant content based on capabilities
+        // Check more restrictive first (non_empty before non_null)
+        auto assistant_content = [&](const json & content) -> json {
+            if ((content.is_null() || (content.is_string() && content.get<std::string>().empty())) && caps_.requires_non_empty_content) {
+                return json("<Assistant Placeholder>");
+            }
+            if (content.is_null() && caps_.requires_non_null_content) {
+                return json("");
+            }
+            return content;
+        };
+
         json j_null;
         auto make_tool_calls_msg = [&](const json & tool_calls) {
             return json {
                 {"role", "assistant"},
-                {"content", caps_.requires_non_null_content? "" : j_null},
+                {"content", assistant_content(j_null)},
                 {"tool_calls", tool_calls},
             };
         };
@@ -250,7 +267,8 @@ class chat_template {
                 };
                 const json tool_call_msg {
                     {"role", "assistant"},
-                    {"content", caps_.requires_non_null_content ? "" : j_null},
+                    // Priority: non_empty (most restrictive) > non_null > null
+                    {"content", caps_.requires_non_empty_content ? json("<Assistant Placeholder>") : (caps_.requires_non_null_content ? json("") : j_null)},
                     {"tool_calls", json::array({
                         {
                             // TODO: detect if requires numerical id or fixed length == 6 like Nemo
@@ -362,6 +380,7 @@ class chat_template {
         auto polyfill_tool_responses = opts.polyfill_tool_responses && has_tool_responses && !caps_.supports_tool_responses;
         auto polyfill_object_arguments = opts.polyfill_object_arguments && has_tool_calls && caps_.requires_object_arguments;
         auto polyfill_typed_content = opts.polyfill_typed_content && has_string_content && caps_.requires_typed_content;
+        auto polyfill_non_empty_content = opts.polyfill_non_empty_content && caps_.requires_non_empty_content;
 
         auto needs_polyfills = opts.apply_polyfills && (false
             || polyfill_system_role
@@ -370,6 +389,7 @@ class chat_template {
             || polyfill_tool_responses
             || polyfill_object_arguments
             || polyfill_typed_content
+            || polyfill_non_empty_content
         );
 
         if (needs_polyfills) {
@@ -415,6 +435,14 @@ class chat_template {
                     throw std::runtime_error("message must have 'role' and one of 'content' or 'tool_calls' fields: " + message.dump());
                 }
                 std::string role = message.at("role");
+
+                // Transform null/empty assistant content for templates that require non-empty content
+                if (polyfill_non_empty_content && role == "assistant") {
+                    auto content = message.contains("content") ? message.at("content") : json();
+                    if (content.is_null() || (content.is_string() && content.get<std::string>().empty())) {
+                        message["content"] = "<Assistant Placeholder>";
+                    }
+                }
 
                 if (message.contains("tool_calls")) {
                     if (polyfill_object_arguments || polyfill_tool_calls) {
