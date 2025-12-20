@@ -124,10 +124,13 @@ if(MINJA_TEST_ENABLED)
     message(STATUS "Python executable: ${Python_EXECUTABLE}")
 endif()
 
-find_program(CPPCHECK cppcheck)
-if(CPPCHECK)
-  set(CMAKE_CXX_CPPCHECK "${CPPCHECK}" -i ${json_SOURCE_DIR}/include/nlohmann/json.hpp)
-  message(STATUS "cppcheck found: ${CPPCHECK}")
+# cppcheck has issues on Windows (missing std.cfg), so we only enable it on non-Windows
+if(NOT WIN32)
+  find_program(CPPCHECK cppcheck)
+  if(CPPCHECK)
+    set(CMAKE_CXX_CPPCHECK "${CPPCHECK}" -i ${json_SOURCE_DIR}/include/nlohmann/json.hpp)
+    message(STATUS "cppcheck found: ${CPPCHECK}")
+  endif()
 endif()
 
 include(GNUInstallDirs)
