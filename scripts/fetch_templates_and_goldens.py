@@ -183,10 +183,12 @@ class chat_template:
         ) or caps.requires_non_empty_content
 
         def assistant_content(content=None):
-          if content is None and caps.requires_non_null_content:
-              return ""
+          # Check non-empty first (more restrictive)
           if not content and caps.requires_non_empty_content:
               return "<Assistant Needle>"
+          # Then check non-null (less restrictive)
+          if content is None and caps.requires_non_null_content:
+              return ""
           return content
 
         def make_tool_calls_msg(tool_calls, content=None):

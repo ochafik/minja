@@ -179,11 +179,13 @@ class chat_template {
 
         json j_null;
         auto assistant_content = [&](const json & content) {
+            // Check non-empty first (more restrictive)
+            if ((content.is_null() || (content.is_string() && content.empty())) && caps_.requires_non_empty_content) {
+                return json("<Assistant Needle>");
+            }
+            // Then check non-null (less restrictive)
             if (content.is_null() && caps_.requires_non_null_content) {
                 return json("");
-            }
-            if ((content.is_null() || (content.is_string() && content.empty())) && caps_.requires_non_empty_content) {
-                return json("<Assitant Needle>");
             }
             return content;
         };
