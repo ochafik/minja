@@ -287,3 +287,20 @@ TEST(CapabilitiesTest, GLM46) {
     EXPECT_FALSE(caps.requires_non_null_content);
     EXPECT_FALSE(caps.requires_typed_content);
 }
+
+// Synthetic template based on DeepSeek V3.2's DSML format (encoding_dsv32.py)
+// V3.2 doesn't provide a Jinja template, so we replicate its Python encoding logic
+// DSML format: <｜DSML｜parameter name="argument_needle" string="true">
+TEST(CapabilitiesTest, SyntheticDeepSeekV3_2_DSML) {
+    auto caps = get_caps("tests/synthetic-deepseek-v3.2-dsml.jinja");
+    EXPECT_TRUE(caps.supports_system_role);
+    EXPECT_FALSE(caps.supports_tools);         // No native tools block in template
+    EXPECT_TRUE(caps.supports_tool_calls);     // Has tool_calls rendering with DSML format
+    EXPECT_FALSE(caps.supports_tool_call_id);
+    EXPECT_TRUE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_parallel_tool_calls);  // Iterates over tool_calls array
+    EXPECT_TRUE(caps.requires_object_arguments);     // DSML iterates over argument keys
+    EXPECT_FALSE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_typed_content);
+}
+

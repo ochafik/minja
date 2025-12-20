@@ -194,10 +194,9 @@ class chat_template:
         dummy_args_obj = {"argument_needle": "print('Hello, World!')"}
         contains_arg_needle = lambda out_str: (
             "<parameter=argument_needle>" in out_str
-            or '"argument_needle":' in out_str
+            or '"argument_needle"' in out_str
             or "'argument_needle':" in out_str
             or ">argument_needle<" in out_str
-            or "<parameter name=\"argument_needle\">" in out_str
         )
 
         out = self.try_raw_render([
@@ -432,6 +431,16 @@ async def async_hf_download(repo_id: str, filename: str) -> str:
 async def process_model(output_folder: str, model_id: str, contexts: list[Context]):
     try:
         print(f"Processing model {model_id}...", file=sys.stderr)
+
+        # Handle local .jinja files directly (for synthetic test templates)
+        if model_id.endswith('.jinja') and os.path.isfile(model_id):
+            async with aiofiles.open(model_id, 'r', encoding='utf-8') as f:
+                chat_template = await f.read()
+            # Use filename without extension as model_id for output naming
+            synthetic_id = os.path.basename(model_id).replace('.jinja', '')
+            await handle_chat_template(output_folder, synthetic_id, None, chat_template, contexts)
+            return
+
         config_str = await async_hf_download(model_id, "tokenizer_config.json")
 
         try:

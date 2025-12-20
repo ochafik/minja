@@ -1,0 +1,42 @@
+{# Synthetic template based on DeepSeek V3.2 DSML format (encoding_dsv32.py) #}
+{# V3.2 doesn't provide a Jinja template, so this replicates its Python encoding logic #}
+{%- set bos_token = "<｜begin▁of▁sentence｜>" -%}
+{%- set eos_token = "<｜end▁of▁sentence｜>" -%}
+{%- set dsml_token = "｜DSML｜" -%}
+{{ bos_token }}
+{%- for message in messages -%}
+{%- if message.role == 'system' -%}
+{{ message.content }}
+{%- elif message.role == 'user' -%}
+<｜User｜>{{ message.content }}<｜Assistant｜>
+{%- elif message.role == 'assistant' -%}
+{%- if message.tool_calls is defined and message.tool_calls -%}
+<{{ dsml_token }}function_calls>
+{%- for tool_call in message.tool_calls -%}
+{%- if tool_call.type == 'function' -%}
+<{{ dsml_token }}invoke name="{{ tool_call.function.name }}">
+{%- if tool_call.function.arguments is mapping -%}
+{%- for key, value in tool_call.function.arguments.items() -%}
+{%- if value is string -%}
+<{{ dsml_token }}parameter name="{{ key }}" string="true">{{ value }}</{{ dsml_token }}parameter>
+{%- else -%}
+<{{ dsml_token }}parameter name="{{ key }}" string="false">{{ value | tojson }}</{{ dsml_token }}parameter>
+{%- endif -%}
+{%- endfor -%}
+{%- endif -%}
+</{{ dsml_token }}invoke>
+{%- endif -%}
+{%- endfor -%}
+</{{ dsml_token }}function_calls>
+{%- endif -%}
+{%- if message.content -%}
+{{ message.content }}
+{%- endif -%}
+{{ eos_token }}
+{%- elif message.role == 'tool' -%}
+<{{ dsml_token }}tool_result>{{ message.content }}</{{ dsml_token }}tool_result>
+{%- endif -%}
+{%- endfor -%}
+{%- if add_generation_prompt -%}
+<｜Assistant｜>
+{%- endif -%}
