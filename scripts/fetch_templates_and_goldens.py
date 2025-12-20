@@ -208,10 +208,9 @@ class chat_template:
         dummy_args_obj = {"argument_needle": "print('Hello, World!')"}
         contains_arg_needle = lambda out_str: (
             "<parameter=argument_needle>" in out_str
-            or '"argument_needle":' in out_str
+            or '"argument_needle"' in out_str
             or "'argument_needle':" in out_str
             or ">argument_needle<" in out_str
-            or "<parameter name=\"argument_needle\">" in out_str
         )
 
         out = self.try_raw_render([
@@ -395,7 +394,7 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
 
     caps_file = join_cmake_path(output_folder, f'{base_name}.caps.json')
 
-    async with aiofiles.open(template_file, 'w') as f:
+    async with aiofiles.open(template_file, 'w', encoding='utf-8', newline='\n') as f:
         await f.write(template_src)
 
     template = chat_template(template_src,
@@ -412,7 +411,7 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
         print(f"{template_file} {caps_file} n/a {template_file}")
         return
 
-    async with aiofiles.open(caps_file, 'w') as f:
+    async with aiofiles.open(caps_file, 'w', encoding='utf-8', newline='\n') as f:
         await f.write(caps.to_json())
 
     assert isinstance(contexts, list)
@@ -430,7 +429,7 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
         output_file = join_cmake_path(output_folder, f'{base_name}-{context.name}.txt')
 
         output = template.apply(context.bindings)
-        async with aiofiles.open(output_file, 'w') as f:
+        async with aiofiles.open(output_file, 'w', encoding='utf-8', newline='\n') as f:
             await f.write(output)
 
         print(f"{template_file} {caps_file} {context.file} {output_file}")
@@ -446,6 +445,16 @@ async def async_hf_download(repo_id: str, filename: str) -> str:
 async def process_model(output_folder: str, model_id: str, contexts: list[Context]):
     try:
         print(f"Processing model {model_id}...", file=sys.stderr)
+
+        # Handle local .jinja files directly (for synthetic test templates)
+        if model_id.endswith('.jinja') and os.path.isfile(model_id):
+            async with aiofiles.open(model_id, 'r', encoding='utf-8') as f:
+                chat_template = await f.read()
+            # Use filename without extension as model_id for output naming
+            synthetic_id = os.path.basename(model_id).replace('.jinja', '')
+            await handle_chat_template(output_folder, synthetic_id, None, chat_template, contexts)
+            return
+
         config_str = await async_hf_download(model_id, "tokenizer_config.json")
 
         try:
@@ -491,7 +500,7 @@ async def main():
     model_ids = []
     for file in args.json_context_files_or_model_ids:
         if file.endswith('.json'):
-            async with aiofiles.open(file, 'r') as f:
+            async with aiofiles.open(file, 'r', encoding='utf-8') as f:
                 contexts.append(Context(
                     name=os.path.basename(file).replace(".json", ""),
                     file=file,

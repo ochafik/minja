@@ -40,6 +40,10 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ar
     target_compile_definitions(test-polyfills PUBLIC _CRT_SECURE_NO_WARNINGS)
     target_compile_options(gtest PRIVATE -Wno-language-extension-token)
 endif()
+# GCC/MinGW on Windows needs -Wa,-mbig-obj for large debug builds due to COFF section limits
+if (MINGW AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(test-polyfills PRIVATE -Wa,-mbig-obj)
+endif()
 target_link_libraries(test-polyfills PRIVATE
     minja
     gtest_main
@@ -139,6 +143,7 @@ set(MODEL_IDS
     deepseek-ai/DeepSeek-V2-Lite
     deepseek-ai/DeepSeek-V2.5
     deepseek-ai/DeepSeek-V3
+    # deepseek-ai/DeepSeek-V3.2  # No Jinja template; see synthetic below
     deepseek-ai/deepseek-coder-7b-instruct-v1.5
     dicta-il/dictalm2.0-instruct
     ehristoforu/Falcon3-8B-Franken-Basestruct
@@ -191,6 +196,9 @@ set(MODEL_IDS
     upstage/solar-pro-preview-instruct
     xwen-team/Xwen-7B-Chat
     zai-org/GLM-4.6
+
+    # Synthetic templates for models without Jinja templates
+    ${CMAKE_CURRENT_SOURCE_DIR}/synthetic-deepseek-v3.2-dsml.jinja
 
     # Broken, TODO:
     # ai21labs/AI21-Jamba-1.5-Large        # https://github.com/google/minja/issues/8
