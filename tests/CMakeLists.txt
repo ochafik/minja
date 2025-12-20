@@ -143,6 +143,7 @@ set(MODEL_IDS
     deepseek-ai/DeepSeek-V2-Lite
     deepseek-ai/DeepSeek-V2.5
     deepseek-ai/DeepSeek-V3
+    # deepseek-ai/DeepSeek-V3.2  # No Jinja template; see synthetic below
     deepseek-ai/deepseek-coder-7b-instruct-v1.5
     dicta-il/dictalm2.0-instruct
     ehristoforu/Falcon3-8B-Franken-Basestruct
@@ -194,6 +195,9 @@ set(MODEL_IDS
     upstage/solar-pro-preview-instruct
     xwen-team/Xwen-7B-Chat
     zai-org/GLM-4.6
+
+    # Synthetic templates for models without Jinja templates
+    ${CMAKE_CURRENT_SOURCE_DIR}/synthetic-deepseek-v3.2-dsml.jinja
 
     # Broken, TODO:
     # ai21labs/AI21-Jamba-1.5-Large        # https://github.com/google/minja/issues/8
