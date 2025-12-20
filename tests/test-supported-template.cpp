@@ -44,8 +44,9 @@ static void assert_equals(const T &expected, const T &actual){
 }
 
 #ifdef _WIN32
-// On Windows, there are known issues with blank line handling in template rendering.
-// This function collapses consecutive blank lines to help with comparison.
+// Workaround for https://github.com/ochafik/minja/issues/16
+// On Windows, C++ minja outputs fewer newlines than Python Jinja2 for certain templates.
+// This function collapses consecutive blank lines to normalize comparison.
 static std::string collapse_blank_lines(const std::string &s) {
     static const std::regex blank_lines_regex("\n\n+");
     return std::regex_replace(s, blank_lines_regex, "\n");
