@@ -104,4 +104,6 @@ jobs:
 
       - name: Test
         if: ${{ matrix.setup.test }}
+        env:
+          PYTHONIOENCODING: utf-8
         run: ctest --test-dir build --output-on-failure --verbose -C ${{ matrix.type }}
