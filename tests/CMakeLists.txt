@@ -40,6 +40,10 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ar
     target_compile_definitions(test-polyfills PUBLIC _CRT_SECURE_NO_WARNINGS)
     target_compile_options(gtest PRIVATE -Wno-language-extension-token)
 endif()
+# GCC/MinGW on Windows needs -Wa,-mbig-obj for large debug builds due to COFF section limits
+if (MINGW AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(test-polyfills PRIVATE -Wa,-mbig-obj)
+endif()
 target_link_libraries(test-polyfills PRIVATE
     minja
     gtest_main
