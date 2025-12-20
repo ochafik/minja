@@ -381,7 +381,7 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
 
     caps_file = join_cmake_path(output_folder, f'{base_name}.caps.json')
 
-    async with aiofiles.open(template_file, 'w') as f:
+    async with aiofiles.open(template_file, 'w', encoding='utf-8') as f:
         await f.write(template_src)
 
     template = chat_template(template_src, 
@@ -398,7 +398,7 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
         print(f"{template_file} {caps_file} n/a {template_file}")
         return
 
-    async with aiofiles.open(caps_file, 'w') as f:
+    async with aiofiles.open(caps_file, 'w', encoding='utf-8') as f:
         await f.write(caps.to_json())
 
     assert isinstance(contexts, list)
@@ -416,7 +416,7 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
         output_file = join_cmake_path(output_folder, f'{base_name}-{context.name}.txt')
 
         output = template.apply(context.bindings)
-        async with aiofiles.open(output_file, 'w') as f:
+        async with aiofiles.open(output_file, 'w', encoding='utf-8') as f:
             await f.write(output)
 
         print(f"{template_file} {caps_file} {context.file} {output_file}")
@@ -477,7 +477,7 @@ async def main():
     model_ids = []
     for file in args.json_context_files_or_model_ids:
         if file.endswith('.json'):
-            async with aiofiles.open(file, 'r') as f:
+            async with aiofiles.open(file, 'r', encoding='utf-8') as f:
                 contexts.append(Context(
                     name=os.path.basename(file).replace(".json", ""),
                     file=file,
