@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - master
+      - main
     paths: ['.github/workflows/build.yml', '**/CMakeLists.txt', '**/*.hpp', '**/*.cpp']
   pull_request:
     types: [opened, synchronize, reopened]
@@ -57,6 +57,13 @@ jobs:
           - setup: { build: 'llvm-arm64' }
             sanitizer: thread
           - setup: { build: 'llvm-arm64' }
+            sanitizer: undefined
+          # Sanitizers not supported on MSVC ARM64
+          - setup: { build: 'msvc-arm64' }
+            sanitizer: address
+          - setup: { build: 'msvc-arm64' }
+            sanitizer: thread
+          - setup: { build: 'msvc-arm64' }
             sanitizer: undefined
     runs-on: ${{ matrix.setup.os }}
     name: ${{ matrix.setup.os }}-${{ matrix.setup.build }}-${{ matrix.type }}-sanitizer-${{ matrix.sanitizer }}
