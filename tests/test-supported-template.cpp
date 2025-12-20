@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
 
         std::string actual;
         try {
-            actual = tmpl.apply(inputs);
+            actual = minja::normalize_newlines(tmpl.apply(inputs));
         } catch (const std::exception &e) {
             std::cerr << "Error applying template: " << e.what() << "\n";
             return 1;
