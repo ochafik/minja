@@ -96,6 +96,7 @@ jobs:
       - name: Configure CMake
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PYTHONIOENCODING: utf-8
         run: cmake -B ${{github.workspace}}/build ${{ matrix.setup.defines }} -DCMAKE_BUILD_TYPE=${{ matrix.type }} -DMINJA_SANITIZER=${{ matrix.sanitizer }}
 
       - name: Build

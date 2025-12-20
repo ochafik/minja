@@ -59,6 +59,11 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 if (NOT MSVC)
     add_compile_options(-Wall -Wextra -pedantic -Werror)
+    # GCC 13+ has false-positive maybe-uninitialized warnings with address sanitizer
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105562
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND MINJA_SANITIZER STREQUAL "address")
+        add_compile_options(-Wno-maybe-uninitialized)
+    endif()
 endif()
 
 include(FetchContent)
