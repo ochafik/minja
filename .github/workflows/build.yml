@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - master
+      - main
     paths: ['.github/workflows/build.yml', '**/CMakeLists.txt', '**/*.hpp', '**/*.cpp']
   pull_request:
     types: [opened, synchronize, reopened]
@@ -58,6 +58,13 @@ jobs:
             sanitizer: thread
           - setup: { build: 'llvm-arm64' }
             sanitizer: undefined
+          # Sanitizers not supported on MSVC ARM64
+          - setup: { build: 'msvc-arm64' }
+            sanitizer: address
+          - setup: { build: 'msvc-arm64' }
+            sanitizer: thread
+          - setup: { build: 'msvc-arm64' }
+            sanitizer: undefined
     runs-on: ${{ matrix.setup.os }}
     name: ${{ matrix.setup.os }}-${{ matrix.setup.build }}-${{ matrix.type }}-sanitizer-${{ matrix.sanitizer }}
     timeout-minutes: 30
@@ -89,6 +96,7 @@ jobs:
       - name: Configure CMake
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PYTHONIOENCODING: utf-8
         run: cmake -B ${{github.workspace}}/build ${{ matrix.setup.defines }} -DCMAKE_BUILD_TYPE=${{ matrix.type }} -DMINJA_SANITIZER=${{ matrix.sanitizer }}
 
       - name: Build
@@ -96,4 +104,6 @@ jobs:
 
       - name: Test
         if: ${{ matrix.setup.test }}
+        env:
+          PYTHONIOENCODING: utf-8
         run: ctest --test-dir build --output-on-failure --verbose -C ${{ matrix.type }}

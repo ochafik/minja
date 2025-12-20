@@ -15,9 +15,9 @@ add_library(minja INTERFACE)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Test if clang-tidy is available
+# Test if clang-tidy is available (disabled for address sanitizer due to GCC false positives)
 find_program(CLANG_TIDY_EXE NAMES "clang-tidy")
-if (CLANG_TIDY_EXE)
+if (CLANG_TIDY_EXE AND NOT MINJA_SANITIZER STREQUAL "address")
     message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
     set(CMAKE_CXX_CLANG_TIDY
         clang-tidy;
@@ -27,6 +27,8 @@ if (CLANG_TIDY_EXE)
         -checks=-*,clang-analyzer-*,clang-diagnostic-*,cppcoreguideline-*,bugprone-*,-bugprone-suspicious-include,-bugprone-assignment-in-if-condition,-bugprone-narrowing-conversions,-bugprone-easily-swappable-parameters,-bugprone-inc-dec-in-conditions,-bugprone-exception-escape,-clang-analyzer-cplusplus.StringChecker;
         -warnings-as-errors=*;
     )
+elseif(MINJA_SANITIZER STREQUAL "address")
+    message(STATUS "clang-tidy disabled for address sanitizer builds")
 else()
     message(STATUS "clang-tidy not found")
 endif()
@@ -59,6 +61,11 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 if (NOT MSVC)
     add_compile_options(-Wall -Wextra -pedantic -Werror)
+    # GCC 13+ has false-positive maybe-uninitialized warnings with address sanitizer
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105562
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND MINJA_SANITIZER STREQUAL "address")
+        add_compile_options(-Wno-maybe-uninitialized)
+    endif()
 endif()
 
 include(FetchContent)
@@ -117,10 +124,13 @@ if(MINJA_TEST_ENABLED)
     message(STATUS "Python executable: ${Python_EXECUTABLE}")
 endif()
 
-find_program(CPPCHECK cppcheck)
-if(CPPCHECK)
-  set(CMAKE_CXX_CPPCHECK "${CPPCHECK}" -i ${json_SOURCE_DIR}/include/nlohmann/json.hpp)
-  message(STATUS "cppcheck found: ${CPPCHECK}")
+# cppcheck has issues on Windows (missing std.cfg), so we only enable it on non-Windows
+if(NOT WIN32)
+  find_program(CPPCHECK cppcheck)
+  if(CPPCHECK)
+    set(CMAKE_CXX_CPPCHECK "${CPPCHECK}" -i ${json_SOURCE_DIR}/include/nlohmann/json.hpp)
+    message(STATUS "cppcheck found: ${CPPCHECK}")
+  endif()
 endif()
 
 include(GNUInstallDirs)
