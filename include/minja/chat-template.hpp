@@ -42,6 +42,13 @@ struct chat_template_caps {
     bool requires_non_null_content = false;
     // MiniMaxAI/MiniMax-Text-01 special
     bool requires_typed_content = false;
+
+    // Thinking / reasoning capabilities
+    bool supports_thinking = false;           // Template supports reasoning_content field
+    bool supports_disable_thinking = true;    // Template respects enable_thinking=false
+    bool supports_reasoning_only = true;      // Can emit reasoning without content/tool calls
+    bool supports_reasoning_with_content = true;  // Can mix content text with reasoning
+    bool reasoning_requires_tools = false;   // Reasoning only appears when tools present
 };
 
 struct chat_template_inputs {
@@ -237,6 +244,28 @@ class chat_template {
             caps_.supports_tool_responses = contains(out, "Some response!");
             caps_.supports_tool_call_id = contains(out, "call_911_");
         }
+
+        // Detect thinking / reasoning capabilities
+        const std::string reasoning_needle = "<REASONING_NEEDLE>";
+        auto make_reasoning_msg = [&](const json & content) {
+            json msg = {
+                {"role", "assistant"},
+                {"reasoning_content", reasoning_needle},
+            };
+            if (!content.is_null()) {
+                msg["content"] = content;
+            } else if (caps_.requires_non_null_content) {
+                msg["content"] = "";
+            }
+            return msg;
+        };
+
+        // Test if template supports reasoning_content field
+        out = try_raw_render(json::array({
+            dummy_user_msg,
+            make_reasoning_msg(json()),
+        }), {}, false);
+        caps_.supports_thinking = contains(out, reasoning_needle);
 
         try {
             if (!caps_.supports_tools) {
