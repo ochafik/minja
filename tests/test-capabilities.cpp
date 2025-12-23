@@ -58,8 +58,13 @@ static minja::chat_template_caps get_caps(const std::string &path)
     print("supports_parallel_tool_calls", caps.supports_parallel_tool_calls);
     print("requires_object_arguments",    caps.requires_object_arguments);
     print("requires_non_null_content",    caps.requires_non_null_content);
-    // print("requires_non_null_content",    caps.requires_non_null_content);
     print("requires_typed_content",       caps.requires_typed_content);
+    // Thinking / reasoning capabilities
+    print("supports_thinking",            caps.supports_thinking);
+    print("supports_disable_thinking",    caps.supports_disable_thinking);
+    print("supports_reasoning_only",      caps.supports_reasoning_only);
+    print("supports_reasoning_with_content", caps.supports_reasoning_with_content);
+    print("reasoning_requires_tools",     caps.reasoning_requires_tools);
     std::cout << "}\n" << std::endl;
 
     return caps;
@@ -302,5 +307,43 @@ TEST(CapabilitiesTest, SyntheticDeepSeekV3_2_DSML) {
     EXPECT_TRUE(caps.requires_object_arguments);     // DSML iterates over argument keys
     EXPECT_FALSE(caps.requires_non_null_content);
     EXPECT_FALSE(caps.requires_typed_content);
+    // Thinking capabilities - synthetic template doesn't support reasoning_content field
+    EXPECT_FALSE(caps.supports_thinking);
 }
+
+// Thinking / reasoning model tests
+// Note: DeepSeek R1 does NOT support reasoning_content field - it looks for  tags embedded in content
+// These tests are for models that DO support the reasoning_content field
+
+#ifndef _WIN32
+TEST(CapabilitiesTest, Qwen3_235B_A22B_Thinking_2507) {
+    auto caps = get_caps("tests/Qwen-Qwen3-235B-A22B-Thinking-2507.jinja");
+    EXPECT_TRUE(caps.supports_system_role);
+    EXPECT_TRUE(caps.supports_tools);
+    EXPECT_TRUE(caps.supports_tool_calls);
+    EXPECT_FALSE(caps.supports_tool_call_id);
+    EXPECT_TRUE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_parallel_tool_calls);
+    EXPECT_FALSE(caps.requires_object_arguments);
+    EXPECT_FALSE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_typed_content);
+    // Qwen Thinking supports reasoning_content field
+    EXPECT_TRUE(caps.supports_thinking);
+}
+
+TEST(CapabilitiesTest, GLM_4_6) {
+    auto caps = get_caps("tests/zai-org-GLM-4.6.jinja");
+    EXPECT_TRUE(caps.supports_system_role);
+    EXPECT_TRUE(caps.supports_tools);
+    EXPECT_TRUE(caps.supports_tool_calls);
+    EXPECT_FALSE(caps.supports_tool_call_id);
+    EXPECT_TRUE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_parallel_tool_calls);
+    EXPECT_TRUE(caps.requires_object_arguments);
+    EXPECT_FALSE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_typed_content);
+    // GLM-4.6 supports reasoning_content field
+    EXPECT_TRUE(caps.supports_thinking);
+}
+#endif // _WIN32
 
