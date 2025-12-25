@@ -43,16 +43,6 @@ static void assert_equals(const T &expected, const T &actual){
     }
 }
 
-#ifdef _WIN32
-// Workaround for https://github.com/ochafik/minja/issues/16
-// On Windows, C++ minja outputs fewer newlines than Python Jinja2 for certain templates.
-// This function collapses consecutive blank lines to normalize comparison.
-static std::string collapse_blank_lines(const std::string &s) {
-    static const std::regex blank_lines_regex("\n\n+");
-    return std::regex_replace(s, blank_lines_regex, "\n");
-}
-#endif
-
 static std::string read_file(const std::string &path) {
     std::ifstream fs(path, std::ios_base::binary);
     if (!fs.is_open()) {
@@ -162,21 +152,12 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-#ifdef _WIN32
-        // On Windows, collapse blank lines for comparison due to known whitespace handling issues
-        auto expected_cmp = collapse_blank_lines(expected);
-        auto actual_cmp = collapse_blank_lines(actual);
-#else
-        auto expected_cmp = expected;
-        auto actual_cmp = actual;
-#endif
-
-        if (expected_cmp != actual_cmp) {
+        if (expected != actual) {
             if (getenv("WRITE_GOLDENS")) {
                 write_file(golden_file, actual);
                 std::cerr << "Updated golden file: " << golden_file << "\n";
             } else {
-                assert_equals(expected_cmp, actual_cmp);
+                assert_equals(expected, actual);
             }
         }
 

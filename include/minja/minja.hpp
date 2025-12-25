@@ -2601,8 +2601,8 @@ private:
 
               auto text = text_token->text;
               if (post_space == SpaceHandling::Strip) {
-                static std::regex trailing_space_regex(R"(\s+$)");
-                text = std::regex_replace(text, trailing_space_regex, "");
+                auto pos = text.find_last_not_of(" \t\n\r\f\v");
+                text.resize(pos == std::string::npos ? 0 : pos + 1);
               } else if (options.lstrip_blocks && it != end) {
                 auto i = text.size();
                 while (i > 0 && (text[i - 1] == ' ' || text[i - 1] == '\t')) i--;
@@ -2611,8 +2611,7 @@ private:
                 }
               }
               if (pre_space == SpaceHandling::Strip) {
-                static std::regex leading_space_regex(R"(^\s+)");
-                text = std::regex_replace(text, leading_space_regex, "");
+                text.erase(0, text.find_first_not_of(" \t\n\r\f\v"));
               } else if (options.trim_blocks && (it - 1) != begin && !dynamic_cast<ExpressionTemplateToken*>((*(it - 2)).get())) {
                 if (!text.empty() && text[0] == '\n') {
                   text.erase(0, 1);
