@@ -1,0 +1,78 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful AI assistant with tool calling capabilities."
+    },
+    {
+      "role": "user",
+      "content": "What's 25 * 37?"
+    },
+    {
+      "role": "assistant",
+      "content": "<think>\nI need to calculate 25 * 37. Let me use a calculator tool for this.\n</think>\n\nLet me calculate that for you.",
+      "tool_calls": [
+        {
+          "id": "call_1",
+          "type": "function",
+          "function": {
+            "name": "calculator",
+            "arguments": "{\"expression\": \"25 * 37\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1",
+      "name": "calculator",
+      "content": "925"
+    },
+    {
+      "role": "assistant",
+      "content": "The result is 925."
+    },
+    {
+      "role": "user",
+      "content": "Now divide that by 5."
+    }
+  ],
+  "add_generation_prompt": true,
+  "bos_token": "<|begin_of_text|>",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "calculator",
+        "description": "Performs mathematical calculations",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "description": "The mathematical expression to evaluate"
+            }
+          },
+          "required": ["expression"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search",
+        "description": "Search the web for information",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The search query"
+            }
+          },
+          "required": ["query"]
+        }
+      }
+    }
+  ]
+}
