@@ -14,6 +14,7 @@
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
+#include <regex>
 
 #undef NDEBUG
 #include <cassert>
@@ -21,6 +22,16 @@
 #define TEST_DATE (getenv("TEST_DATE") ? getenv("TEST_DATE") : "2024-07-26")
 
 using json = nlohmann::ordered_json;
+
+#ifdef _WIN32
+// Workaround for https://github.com/ochafik/minja/issues/16
+// On Windows, C++ minja outputs fewer newlines than Python Jinja2 for certain templates.
+// This function collapses consecutive blank lines to normalize comparison.
+static std::string collapse_blank_lines(const std::string &s) {
+    static const std::regex blank_lines_regex("\n\n+");
+    return std::regex_replace(s, blank_lines_regex, "\n");
+}
+#endif
 
 template <class T>
 static void assert_equals(const T &expected, const T &actual){
