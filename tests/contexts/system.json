@@ -16,5 +16,9 @@
   "add_generation_prompt": true,
   "bos_token": "<|startoftext|>",
   "eos_token": "<|endoftext|>",
-  "tools_in_user_message": false
+  "tools_in_user_message": false,
+  "_test_metadata": {
+    "_comment": "Conversation with system message. Note: Some templates claim system support but have bugs",
+    "expected_strings": ["What's your favourite LLM framework?", "llama.cpp!"]
+  }
 }

@@ -1,0 +1,30 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is 2+2?"
+    },
+    {
+      "role": "assistant",
+      "reasoning_content": "Simple arithmetic: 2+2=4",
+      "content": "4"
+    },
+    {
+      "role": "user",
+      "content": "And 3+3?"
+    },
+    {
+      "role": "assistant",
+      "reasoning_content": "Similarly: 3+3=6",
+      "content": "6"
+    }
+  ],
+  "add_generation_prompt": true,
+  "bos_token": "<|startoftext|>",
+  "eos_token": "<|endoftext|>",
+  "_test_metadata": {
+    "_comment": "Position-based: only last reasoning shown. First may be hidden by some templates",
+    "expected_strings_if_supports_thinking": ["Similarly: 3+3=6", "6"],
+    "forbidden_strings": ["\"reasoning_content\""]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Let's solve a puzzle step by step"
+    },
+    {
+      "role": "assistant",
+      "reasoning_content": "This is a multi-step problem. Let me break it down.",
+      "content": "Sure, let's work through it together."
+    },
+    {
+      "role": "user",
+      "content": "First clue: the number is even"
+    },
+    {
+      "role": "assistant",
+      "reasoning_content": "An even number... that narrows it to 2, 4, 6, 8...",
+      "content": "Noted. What's the next clue?"
+    },
+    {
+      "role": "user",
+      "content": "It's less than 5"
+    },
+    {
+      "role": "assistant",
+      "reasoning_content": "Even and less than 5 means it's either 2 or 4.",
+      "content": "The number must be 2 or 4!"
+    }
+  ],
+  "add_generation_prompt": true,
+  "bos_token": "<|startoftext|>",
+  "eos_token": "<|endoftext|>",
+  "_test_metadata": {
+    "_comment": "Multi-turn reasoning. Final reasoning should always appear, earlier may be hidden",
+    "expected_strings_if_supports_thinking": ["Even and less than 5 means it's either 2 or 4.", "The number must be 2 or 4!"],
+    "forbidden_strings": ["\"reasoning_content\""]
+  }
+}

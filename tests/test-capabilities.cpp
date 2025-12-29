@@ -39,6 +39,19 @@ static std::string read_file(const std::string &path)
     return out;
 }
 
+static std::string thinking_pattern_to_string(minja::ThinkingPattern pattern) {
+    switch (pattern) {
+        case minja::ThinkingPattern::NONE: return "NONE";
+        case minja::ThinkingPattern::REASONING_CONTENT_FIELD: return "REASONING_CONTENT_FIELD";
+        case minja::ThinkingPattern::CONTENT_BLOCK_THINKING: return "CONTENT_BLOCK_THINKING";
+        case minja::ThinkingPattern::CONTENT_BLOCK_THOUGHTS: return "CONTENT_BLOCK_THOUGHTS";
+        case minja::ThinkingPattern::THOUGHT_FIELD: return "THOUGHT_FIELD";
+        case minja::ThinkingPattern::TOOL_PLAN_FIELD: return "TOOL_PLAN_FIELD";
+        case minja::ThinkingPattern::THINKING_FIELD: return "THINKING_FIELD";
+        default: return "UNKNOWN";
+    }
+}
+
 static minja::chat_template_caps get_caps(const std::string &path)
 {
     auto caps = minja::chat_template(read_file(path), "", "").original_caps();
@@ -65,6 +78,8 @@ static minja::chat_template_caps get_caps(const std::string &path)
     print("supports_reasoning_only",      caps.supports_reasoning_only);
     print("supports_reasoning_with_content", caps.supports_reasoning_with_content);
     print("reasoning_requires_tools",     caps.reasoning_requires_tools);
+    print("supports_clear_thinking",      caps.supports_clear_thinking);
+    std::cout << "    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::" << thinking_pattern_to_string(caps.thinking_pattern) << ");" << std::endl;
     std::cout << "}\n" << std::endl;
 
     return caps;
@@ -346,4 +361,49 @@ TEST(CapabilitiesTest, GLM_4_6) {
     EXPECT_TRUE(caps.supports_thinking);
 }
 #endif // _WIN32
+
+// ThinkingPattern tests - verify detection of different thinking/reasoning patterns
+
+// Pattern A: REASONING_CONTENT_FIELD (Qwen3, GLM-4.6/4.7)
+TEST(ThinkingPatternTest, ReasoningContentField_GLM47) {
+    auto caps = get_caps("tests/zai-org-GLM-4.7.jinja");
+    EXPECT_TRUE(caps.supports_thinking);
+    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::REASONING_CONTENT_FIELD);
+    // GLM-4.7 supports clear_thinking flag for position-based visibility
+    EXPECT_TRUE(caps.supports_clear_thinking);
+}
+
+TEST(ThinkingPatternTest, ReasoningContentField_Qwen3) {
+    auto caps = get_caps("tests/Qwen-Qwen3-4B.jinja");
+    EXPECT_TRUE(caps.supports_thinking);
+    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::REASONING_CONTENT_FIELD);
+}
+
+// Pattern D: THOUGHT_FIELD (MiniCPM3)
+TEST(ThinkingPatternTest, ThoughtField_MiniCPM3) {
+    auto caps = get_caps("tests/openbmb-MiniCPM3-4B.jinja");
+    EXPECT_TRUE(caps.supports_thinking);
+    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::THOUGHT_FIELD);
+}
+
+// Pattern E: TOOL_PLAN_FIELD (Command-R7B) - requires tools
+TEST(ThinkingPatternTest, ToolPlanField_CommandR7B) {
+    auto caps = get_caps("tests/CohereForAI-c4ai-command-r7b-12-2024-tool_use.jinja");
+    EXPECT_TRUE(caps.supports_thinking);
+    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::TOOL_PLAN_FIELD);
+    EXPECT_TRUE(caps.reasoning_requires_tools);
+}
+
+// Pattern NONE: Templates without thinking support
+TEST(ThinkingPatternTest, NoThinking_Gemma7b) {
+    auto caps = get_caps("tests/google-gemma-7b-it.jinja");
+    EXPECT_FALSE(caps.supports_thinking);
+    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::NONE);
+}
+
+TEST(ThinkingPatternTest, NoThinking_Llama31) {
+    auto caps = get_caps("tests/meta-llama-Llama-3.1-8B-Instruct.jinja");
+    EXPECT_FALSE(caps.supports_thinking);
+    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::NONE);
+}
 

@@ -28,6 +28,16 @@ using json = nlohmann::ordered_json;
 
 namespace minja {
 
+enum class ThinkingPattern {
+    NONE,                        // Template doesn't support thinking
+    REASONING_CONTENT_FIELD,     // Pattern A: message.reasoning_content (Qwen3, GLM-4.6/4.7)
+    CONTENT_BLOCK_THINKING,      // Pattern B: content[].type == "thinking" (Ministral)
+    CONTENT_BLOCK_THOUGHTS,      // Pattern C: content[].type == "thoughts" (Apertus)
+    THOUGHT_FIELD,               // Pattern D: message.thought (MiniCPM3)
+    TOOL_PLAN_FIELD,             // Pattern E: message.tool_plan (Command-R7B)
+    THINKING_FIELD,              // Pattern F: message.thinking (GPT-OSS-120B)
+};
+
 struct chat_template_caps {
     bool supports_tools = false;
     bool supports_tool_calls = false;
@@ -44,11 +54,18 @@ struct chat_template_caps {
     bool requires_typed_content = false;
 
     // Thinking / reasoning capabilities
-    bool supports_thinking = false;           // Template supports reasoning_content field
+    bool supports_thinking = false;           // Template supports some form of reasoning
     bool supports_disable_thinking = true;    // Template respects enable_thinking=false
     bool supports_reasoning_only = true;      // Can emit reasoning without content/tool calls
     bool supports_reasoning_with_content = true;  // Can mix content text with reasoning
-    bool reasoning_requires_tools = false;   // Reasoning only appears when tools present
+    bool reasoning_requires_tools = false;    // Reasoning only appears when tools present
+
+    // Thinking pattern details
+    ThinkingPattern thinking_pattern = ThinkingPattern::NONE;
+
+    // Whether template supports clear_thinking flag (GLM-4.7 pattern)
+    // When clear_thinking=false, all reasoning is shown; when true/undefined, position-based visibility
+    bool supports_clear_thinking = false;
 };
 
 struct chat_template_inputs {
@@ -72,6 +89,8 @@ struct chat_template_options {
     bool polyfill_system_role = true;
     bool polyfill_object_arguments = true;
     bool polyfill_typed_content = true;
+    // Convert reasoning_content to template's native format (thought, thinking, tool_plan)
+    bool polyfill_reasoning = true;
 };
 
 class chat_template {
@@ -247,11 +266,11 @@ class chat_template {
 
         // Detect thinking / reasoning capabilities
         const std::string reasoning_needle = "<REASONING_NEEDLE>";
-        auto make_reasoning_msg = [&](const json & content) {
-            json msg = {
-                {"role", "assistant"},
-                {"reasoning_content", reasoning_needle},
-            };
+        auto make_assistant_msg = [&](const json & extra_fields, const json & content = json()) {
+            json msg = {{"role", "assistant"}};
+            for (auto & [key, val] : extra_fields.items()) {
+                msg[key] = val;
+            }
             if (!content.is_null()) {
                 msg["content"] = content;
             } else if (caps_.requires_non_null_content) {
@@ -260,12 +279,112 @@ class chat_template {
             return msg;
         };
 
-        // Test if template supports reasoning_content field
+        // Pattern A: reasoning_content field (Qwen3, GLM-4.6/4.7)
         out = try_raw_render(json::array({
             dummy_user_msg,
-            make_reasoning_msg(json()),
+            make_assistant_msg({{"reasoning_content", reasoning_needle}}),
         }), {}, false);
-        caps_.supports_thinking = contains(out, reasoning_needle);
+        bool supports_reasoning_content = contains(out, reasoning_needle);
+
+        // Pattern D: thought field (MiniCPM3)
+        out = try_raw_render(json::array({
+            dummy_user_msg,
+            make_assistant_msg({{"thought", reasoning_needle}}, "response"),
+        }), {}, false);
+        bool supports_thought_field = contains(out, reasoning_needle);
+
+        // Pattern F: thinking field (GPT-OSS-120B style)
+        out = try_raw_render(json::array({
+            dummy_user_msg,
+            make_assistant_msg({{"thinking", reasoning_needle}}, "response"),
+        }), {}, false);
+        bool supports_thinking_field = contains(out, reasoning_needle);
+
+        // Pattern B: content blocks with type="thinking" (Ministral)
+        // To detect stringification, we check if the output contains structural markers
+        // like '"type"' or "'type'" which would appear in serialized JSON/Python
+        json content_block_thinking_msg = {
+            {"role", "assistant"},
+            {"content", json::array({
+                {{"type", "thinking"}, {"thinking", reasoning_needle}},
+                {{"type", "text"}, {"text", "response"}}
+            })}
+        };
+        out = try_raw_render(json::array({dummy_user_msg, content_block_thinking_msg}), {}, false);
+        // Real support: needle appears but structural markers don't (template extracts content)
+        // Stringified: needle appears with structural markers (template just serializes the object)
+        bool supports_content_block_thinking = contains(out, reasoning_needle)
+            && !contains(out, "\"type\"") && !contains(out, "'type'");
+
+        // Pattern C: content blocks with type="thoughts" (Apertus)
+        json content_block_thoughts_msg = {
+            {"role", "assistant"},
+            {"content", json::array({
+                {{"type", "thoughts"}, {"text", reasoning_needle}},
+                {{"type", "text"}, {"text", "response"}}
+            })}
+        };
+        out = try_raw_render(json::array({dummy_user_msg, content_block_thoughts_msg}), {}, false);
+        bool supports_content_block_thoughts = contains(out, reasoning_needle)
+            && !contains(out, "\"type\"") && !contains(out, "'type'");
+
+        // Pattern E: tool_plan field (Command-R7B) - requires tool_calls
+        bool supports_tool_plan_field = false;
+        if (caps_.supports_tool_calls) {
+            auto dummy_args = caps_.requires_object_arguments ? dummy_args_obj : json(dummy_args_obj.dump());
+            json tool_plan_msg = {
+                {"role", "assistant"},
+                {"content", caps_.requires_non_null_content ? "" : json()},
+                {"tool_plan", reasoning_needle},
+                {"tool_calls", json::array({make_tool_call("test_tool", dummy_args)})},
+            };
+            out = try_raw_render(json::array({
+                dummy_user_msg,
+                tool_plan_msg,
+            }), {}, false);
+            supports_tool_plan_field = contains(out, reasoning_needle);
+        }
+
+        // Determine the primary thinking pattern (in priority order)
+        // Field-based patterns are checked first as they are more specific
+        // Content block patterns are checked last as many templates just stringify unknown content
+        if (supports_reasoning_content) {
+            caps_.supports_thinking = true;
+            caps_.thinking_pattern = ThinkingPattern::REASONING_CONTENT_FIELD;
+        } else if (supports_thought_field) {
+            caps_.supports_thinking = true;
+            caps_.thinking_pattern = ThinkingPattern::THOUGHT_FIELD;
+        } else if (supports_thinking_field) {
+            caps_.supports_thinking = true;
+            caps_.thinking_pattern = ThinkingPattern::THINKING_FIELD;
+        } else if (supports_tool_plan_field) {
+            caps_.supports_thinking = true;
+            caps_.thinking_pattern = ThinkingPattern::TOOL_PLAN_FIELD;
+            caps_.reasoning_requires_tools = true;
+        } else if (supports_content_block_thinking) {
+            caps_.supports_thinking = true;
+            caps_.thinking_pattern = ThinkingPattern::CONTENT_BLOCK_THINKING;
+        } else if (supports_content_block_thoughts) {
+            caps_.supports_thinking = true;
+            caps_.thinking_pattern = ThinkingPattern::CONTENT_BLOCK_THOUGHTS;
+        }
+
+        // Test clear_thinking support (GLM-4.7 pattern)
+        // When clear_thinking=false is passed, template should show all reasoning
+        if (caps_.thinking_pattern == ThinkingPattern::REASONING_CONTENT_FIELD) {
+            // Test with multiple assistant messages and clear_thinking=false
+            const std::string first_reasoning = "<FIRST_REASONING>";
+            const std::string second_reasoning = "<SECOND_REASONING>";
+            json extra_ctx = {{"clear_thinking", false}};
+            out = try_raw_render(json::array({
+                dummy_user_msg,
+                make_assistant_msg({{"reasoning_content", first_reasoning}}, "first"),
+                dummy_user_msg,
+                make_assistant_msg({{"reasoning_content", second_reasoning}}, "second"),
+            }), {}, false, extra_ctx);
+            // If both reasonings are visible with clear_thinking=false, template supports it
+            caps_.supports_clear_thinking = contains(out, first_reasoning) && contains(out, second_reasoning);
+        }
 
         try {
             if (!caps_.supports_tools) {
@@ -371,6 +490,7 @@ class chat_template {
         auto has_tool_calls = false;
         auto has_tool_responses = false;
         auto has_string_content = false;
+        auto has_reasoning_content = false;
         for (const auto & message : inputs.messages) {
             if (message.contains("tool_calls") && !message["tool_calls"].is_null()) {
                 has_tool_calls = true;
@@ -381,6 +501,9 @@ class chat_template {
             if (message.contains("content") && message["content"].is_string()) {
                 has_string_content = true;
             }
+            if (message.contains("reasoning_content") && !message["reasoning_content"].is_null()) {
+                has_reasoning_content = true;
+            }
         }
 
         auto polyfill_system_role = opts.polyfill_system_role && !caps_.supports_system_role;
@@ -390,6 +513,11 @@ class chat_template {
         auto polyfill_tool_responses = opts.polyfill_tool_responses && has_tool_responses && !caps_.supports_tool_responses;
         auto polyfill_object_arguments = opts.polyfill_object_arguments && has_tool_calls && caps_.requires_object_arguments;
         auto polyfill_typed_content = opts.polyfill_typed_content && has_string_content && caps_.requires_typed_content;
+        // Polyfill reasoning_content to template's native format when template supports
+        // a different thinking pattern than REASONING_CONTENT_FIELD
+        auto polyfill_reasoning = opts.polyfill_reasoning && has_reasoning_content
+            && caps_.thinking_pattern != ThinkingPattern::NONE
+            && caps_.thinking_pattern != ThinkingPattern::REASONING_CONTENT_FIELD;
 
         auto needs_polyfills = opts.apply_polyfills && (false
             || polyfill_system_role
@@ -398,6 +526,7 @@ class chat_template {
             || polyfill_tool_responses
             || polyfill_object_arguments
             || polyfill_typed_content
+            || polyfill_reasoning
         );
 
         if (needs_polyfills) {
@@ -503,6 +632,66 @@ class chat_template {
                     }
                     message["content"] = obj.dump(2);
                     message.erase("name");
+                }
+
+                // Polyfill reasoning_content to template's native format
+                if (polyfill_reasoning && message.contains("reasoning_content") && !message["reasoning_content"].is_null()) {
+                    auto reasoning = message["reasoning_content"];
+                    switch (caps_.thinking_pattern) {
+                        case ThinkingPattern::THOUGHT_FIELD:
+                            // MiniCPM3 style: message.thought
+                            message["thought"] = reasoning;
+                            break;
+                        case ThinkingPattern::THINKING_FIELD:
+                            // GPT-OSS-120B style: message.thinking
+                            message["thinking"] = reasoning;
+                            break;
+                        case ThinkingPattern::TOOL_PLAN_FIELD:
+                            // Command-R7B style: message.tool_plan (only with tool_calls)
+                            if (message.contains("tool_calls")) {
+                                message["tool_plan"] = reasoning;
+                            }
+                            break;
+                        case ThinkingPattern::CONTENT_BLOCK_THINKING:
+                            // Ministral style: content blocks with type="thinking"
+                            {
+                                json content_blocks = json::array();
+                                content_blocks.push_back({{"type", "thinking"}, {"thinking", reasoning}});
+                                if (message.contains("content") && !message["content"].is_null()) {
+                                    auto original_content = message["content"];
+                                    if (original_content.is_string()) {
+                                        content_blocks.push_back({{"type", "text"}, {"text", original_content}});
+                                    } else if (original_content.is_array()) {
+                                        for (const auto & block : original_content) {
+                                            content_blocks.push_back(block);
+                                        }
+                                    }
+                                }
+                                message["content"] = content_blocks;
+                            }
+                            break;
+                        case ThinkingPattern::CONTENT_BLOCK_THOUGHTS:
+                            // Apertus style: content blocks with type="thoughts"
+                            {
+                                json content_blocks = json::array();
+                                content_blocks.push_back({{"type", "thoughts"}, {"text", reasoning}});
+                                if (message.contains("content") && !message["content"].is_null()) {
+                                    auto original_content = message["content"];
+                                    if (original_content.is_string()) {
+                                        content_blocks.push_back({{"type", "text"}, {"text", original_content}});
+                                    } else if (original_content.is_array()) {
+                                        for (const auto & block : original_content) {
+                                            content_blocks.push_back(block);
+                                        }
+                                    }
+                                }
+                                message["content"] = content_blocks;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    message.erase("reasoning_content");
                 }
 
                 if (!message["content"].is_null() && polyfill_system_role) {

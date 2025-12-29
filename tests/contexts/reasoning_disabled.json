@@ -1,0 +1,21 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Quick answer: what is 2+2?"
+    },
+    {
+      "role": "assistant",
+      "content": "4"
+    }
+  ],
+  "add_generation_prompt": true,
+  "enable_thinking": false,
+  "bos_token": "<|startoftext|>",
+  "eos_token": "<|endoftext|>",
+  "_test_metadata": {
+    "_comment": "enable_thinking=false disables thinking mode",
+    "expected_strings": ["Quick answer: what is 2+2?", "4"],
+    "forbidden_strings": ["\"reasoning_content\""]
+  }
+}
