@@ -174,19 +174,19 @@ class chat_template:
         caps.supports_tools = "some_tool" in out
 
         caps.requires_non_empty_content = \
-            (user_needle in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": "<Assistant Needle>"}])) \
+            (user_needle in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": " "}])) \
             and (user_needle not in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": ''}])) \
             and (user_needle not in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": None}]))
-        caps.requires_non_null_content = (
+        caps.requires_non_null_content = caps.requires_non_empty_content or (
             (user_needle in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": ''}]))
             and (user_needle not in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": None}]))
-        ) or caps.requires_non_empty_content
+        )
 
         def assistant_content(content=None):
           if content is None and caps.requires_non_null_content:
               return ""
           if not content and caps.requires_non_empty_content:
-              return "<Assistant Needle>"
+              return " "
           return content
 
         def make_tool_calls_msg(tool_calls, content=None):

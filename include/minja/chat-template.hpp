@@ -173,9 +173,9 @@ class chat_template {
         };
         auto out_empty = render_with_content("");
         auto out_null = render_with_content(json());
-        auto out_nonempty = render_with_content("<Assistant Needle>");
+        auto out_nonempty = render_with_content(" ");
         caps_.requires_non_empty_content = contains(out_nonempty, user_needle) && !contains(out_empty, user_needle) && !contains(out_null, user_needle);
-        caps_.requires_non_null_content = (contains(out_empty, user_needle) && !contains(out_null, user_needle)) || caps_.requires_non_empty_content;
+        caps_.requires_non_null_content = caps_.requires_non_empty_content || (contains(out_empty, user_needle) && !contains(out_null, user_needle));
 
         json j_null;
         auto assistant_content = [&](const json & content) {
@@ -183,7 +183,7 @@ class chat_template {
                 return json("");
             }
             if ((content.is_null() || (content.is_string() && content.empty())) && caps_.requires_non_empty_content) {
-                return json("<Assitant Needle>");
+                return json(" ");
             }
             return content;
         };
