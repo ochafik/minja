@@ -66,7 +66,7 @@ struct chat_template_caps {
 
     // Whether template supports reasoning visibility control (GLM-4.7's clear_thinking flag)
     // When clear_thinking=false, all reasoning is shown; when true/default, position-based visibility
-    bool supports_reasoning_visibility = false;
+    bool supports_clear_thinking = false;
 };
 
 struct chat_template_inputs {
@@ -384,7 +384,7 @@ class chat_template {
                 make_assistant_msg({{"reasoning_content", second_reasoning}}, "second"),
             }), {}, false, extra_ctx);
             // If both reasonings are visible with clear_thinking=false, template supports it
-            caps_.supports_reasoning_visibility = contains(out, first_reasoning) && contains(out, second_reasoning);
+            caps_.supports_clear_thinking = contains(out, first_reasoning) && contains(out, second_reasoning);
         }
 
         // Test reasoning behavior flags for templates that support reasoning

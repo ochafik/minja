@@ -154,6 +154,8 @@ if(MINJA_EXAMPLE_ENABLED)
     add_subdirectory(examples)
 endif()
 
+add_subdirectory(tools)
+
 if(MINJA_TEST_ENABLED)
     enable_testing()
     include(GoogleTest)

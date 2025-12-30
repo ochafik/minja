@@ -224,7 +224,7 @@ int main(int argc, char *argv[]) {
                 }
             }
             bool should_check_reasoning_strings = caps.supports_reasoning
-                && (!context_uses_clear_thinking || caps.supports_reasoning_visibility)
+                && (!context_uses_clear_thinking || caps.supports_clear_thinking)
                 && (!caps.reasoning_requires_tools || context_has_tool_calls);
             if (!check_expected_strings("expected_strings_if_supports_reasoning", should_check_reasoning_strings, "reasoning")) {
                 return 1;

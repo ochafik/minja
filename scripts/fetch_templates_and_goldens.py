@@ -104,7 +104,7 @@ class TemplateCaps:
     supports_reasoning_without_content: bool = False
     supports_reasoning_with_content: bool = False
     respects_enable_reasoning: bool = False
-    supports_reasoning_visibility: bool = False
+    supports_clear_thinking: bool = False
 
     def to_json(self):
         return json.dumps({
@@ -408,7 +408,7 @@ class chat_template:
                 dummy_user_msg,
                 make_assistant_msg({"reasoning_content": second_reasoning}, "second"),
             ], extra_context={"clear_thinking": False})
-            caps.supports_reasoning_visibility = first_reasoning in out and second_reasoning in out
+            caps.supports_clear_thinking = first_reasoning in out and second_reasoning in out
 
         # Test reasoning behavior flags for templates that support reasoning
         if caps.supports_reasoning:

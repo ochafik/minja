@@ -78,7 +78,7 @@ static minja::chat_template_caps get_caps(const std::string &path)
     print("supports_reasoning_without_content", caps.supports_reasoning_without_content);
     print("supports_reasoning_with_content", caps.supports_reasoning_with_content);
     print("respects_enable_reasoning",       caps.respects_enable_reasoning);
-    print("supports_reasoning_visibility",   caps.supports_reasoning_visibility);
+    print("supports_clear_thinking",   caps.supports_clear_thinking);
     std::cout << "    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::" << reasoning_format_to_string(caps.reasoning_format) << ");" << std::endl;
     std::cout << "}\n" << std::endl;
 
@@ -370,7 +370,7 @@ TEST(ReasoningFormatTest, ReasoningContentField_GLM47) {
     EXPECT_TRUE(caps.supports_reasoning);
     EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::REASONING_CONTENT);
     // GLM-4.7 supports reasoning visibility control (clear_thinking flag)
-    EXPECT_TRUE(caps.supports_reasoning_visibility);
+    EXPECT_TRUE(caps.supports_clear_thinking);
 }
 
 TEST(ReasoningFormatTest, ReasoningContentField_Qwen3) {
