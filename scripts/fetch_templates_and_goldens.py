@@ -174,7 +174,7 @@ class chat_template:
         caps.supports_tools = "some_tool" in out
 
         caps.requires_non_empty_content = \
-            (user_needle in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": " "}])) \
+            (user_needle in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": ' '}])) \
             and (user_needle not in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": ''}])) \
             and (user_needle not in self.try_raw_render([dummy_user_msg, {"role": "assistant", "content": None}]))
         caps.requires_non_null_content = caps.requires_non_empty_content or (
@@ -397,7 +397,7 @@ async def handle_chat_template(output_folder, model_id, variant, template_src, c
     async with aiofiles.open(template_file, 'w', encoding='utf-8', newline='\n') as f:
         await f.write(template_src)
 
-    template = chat_template(template_src,
+    template = chat_template(template_src, 
                              filters={
                                     'safe': lambda x: x,
                              },
