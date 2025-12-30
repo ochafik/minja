@@ -39,15 +39,15 @@ static std::string read_file(const std::string &path)
     return out;
 }
 
-static std::string thinking_pattern_to_string(minja::ThinkingPattern pattern) {
-    switch (pattern) {
-        case minja::ThinkingPattern::NONE: return "NONE";
-        case minja::ThinkingPattern::REASONING_CONTENT_FIELD: return "REASONING_CONTENT_FIELD";
-        case minja::ThinkingPattern::CONTENT_BLOCK_THINKING: return "CONTENT_BLOCK_THINKING";
-        case minja::ThinkingPattern::CONTENT_BLOCK_THOUGHTS: return "CONTENT_BLOCK_THOUGHTS";
-        case minja::ThinkingPattern::THOUGHT_FIELD: return "THOUGHT_FIELD";
-        case minja::ThinkingPattern::TOOL_PLAN_FIELD: return "TOOL_PLAN_FIELD";
-        case minja::ThinkingPattern::THINKING_FIELD: return "THINKING_FIELD";
+static std::string reasoning_format_to_string(minja::ReasoningFormat format) {
+    switch (format) {
+        case minja::ReasoningFormat::NONE: return "NONE";
+        case minja::ReasoningFormat::REASONING_CONTENT: return "REASONING_CONTENT";
+        case minja::ReasoningFormat::CONTENT_BLOCK_THINKING: return "CONTENT_BLOCK_THINKING";
+        case minja::ReasoningFormat::CONTENT_BLOCK_THOUGHTS: return "CONTENT_BLOCK_THOUGHTS";
+        case minja::ReasoningFormat::THOUGHT_FIELD: return "THOUGHT_FIELD";
+        case minja::ReasoningFormat::TOOL_PLAN_FIELD: return "TOOL_PLAN_FIELD";
+        case minja::ReasoningFormat::THINKING_FIELD: return "THINKING_FIELD";
         default: return "UNKNOWN";
     }
 }
@@ -72,14 +72,14 @@ static minja::chat_template_caps get_caps(const std::string &path)
     print("requires_object_arguments",    caps.requires_object_arguments);
     print("requires_non_null_content",    caps.requires_non_null_content);
     print("requires_typed_content",       caps.requires_typed_content);
-    // Thinking / reasoning capabilities
-    print("supports_thinking",            caps.supports_thinking);
-    print("supports_disable_thinking",    caps.supports_disable_thinking);
-    print("supports_reasoning_only",      caps.supports_reasoning_only);
+    // Reasoning capabilities (extended thinking / chain-of-thought)
+    print("supports_reasoning",              caps.supports_reasoning);
+    print("reasoning_requires_tools",        caps.reasoning_requires_tools);
+    print("supports_reasoning_without_content", caps.supports_reasoning_without_content);
     print("supports_reasoning_with_content", caps.supports_reasoning_with_content);
-    print("reasoning_requires_tools",     caps.reasoning_requires_tools);
-    print("supports_clear_thinking",      caps.supports_clear_thinking);
-    std::cout << "    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::" << thinking_pattern_to_string(caps.thinking_pattern) << ");" << std::endl;
+    print("respects_enable_reasoning",       caps.respects_enable_reasoning);
+    print("supports_reasoning_visibility",   caps.supports_reasoning_visibility);
+    std::cout << "    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::" << reasoning_format_to_string(caps.reasoning_format) << ");" << std::endl;
     std::cout << "}\n" << std::endl;
 
     return caps;
@@ -322,11 +322,11 @@ TEST(CapabilitiesTest, SyntheticDeepSeekV3_2_DSML) {
     EXPECT_TRUE(caps.requires_object_arguments);     // DSML iterates over argument keys
     EXPECT_FALSE(caps.requires_non_null_content);
     EXPECT_FALSE(caps.requires_typed_content);
-    // Thinking capabilities - synthetic template doesn't support reasoning_content field
-    EXPECT_FALSE(caps.supports_thinking);
+    // Reasoning capabilities - synthetic template doesn't support reasoning_content field
+    EXPECT_FALSE(caps.supports_reasoning);
 }
 
-// Thinking / reasoning model tests
+// Reasoning model tests
 // Note: DeepSeek R1 does NOT support reasoning_content field - it looks for  tags embedded in content
 // These tests are for models that DO support the reasoning_content field
 
@@ -342,8 +342,8 @@ TEST(CapabilitiesTest, Qwen3_235B_A22B_Thinking_2507) {
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
     EXPECT_FALSE(caps.requires_typed_content);
-    // Qwen Thinking supports reasoning_content field
-    EXPECT_TRUE(caps.supports_thinking);
+    // Qwen supports reasoning_content field
+    EXPECT_TRUE(caps.supports_reasoning);
 }
 
 TEST(CapabilitiesTest, GLM_4_6) {
@@ -358,52 +358,52 @@ TEST(CapabilitiesTest, GLM_4_6) {
     EXPECT_FALSE(caps.requires_non_null_content);
     EXPECT_FALSE(caps.requires_typed_content);
     // GLM-4.6 supports reasoning_content field
-    EXPECT_TRUE(caps.supports_thinking);
+    EXPECT_TRUE(caps.supports_reasoning);
 }
 #endif // _WIN32
 
-// ThinkingPattern tests - verify detection of different thinking/reasoning patterns
+// ReasoningFormat tests - verify detection of different reasoning formats
 
-// Pattern A: REASONING_CONTENT_FIELD (Qwen3, GLM-4.6/4.7)
-TEST(ThinkingPatternTest, ReasoningContentField_GLM47) {
+// Pattern A: REASONING_CONTENT (Qwen3, GLM-4.6/4.7)
+TEST(ReasoningFormatTest, ReasoningContentField_GLM47) {
     auto caps = get_caps("tests/zai-org-GLM-4.7.jinja");
-    EXPECT_TRUE(caps.supports_thinking);
-    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::REASONING_CONTENT_FIELD);
-    // GLM-4.7 supports clear_thinking flag for position-based visibility
-    EXPECT_TRUE(caps.supports_clear_thinking);
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::REASONING_CONTENT);
+    // GLM-4.7 supports reasoning visibility control (clear_thinking flag)
+    EXPECT_TRUE(caps.supports_reasoning_visibility);
 }
 
-TEST(ThinkingPatternTest, ReasoningContentField_Qwen3) {
+TEST(ReasoningFormatTest, ReasoningContentField_Qwen3) {
     auto caps = get_caps("tests/Qwen-Qwen3-4B.jinja");
-    EXPECT_TRUE(caps.supports_thinking);
-    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::REASONING_CONTENT_FIELD);
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::REASONING_CONTENT);
 }
 
 // Pattern D: THOUGHT_FIELD (MiniCPM3)
-TEST(ThinkingPatternTest, ThoughtField_MiniCPM3) {
+TEST(ReasoningFormatTest, ThoughtField_MiniCPM3) {
     auto caps = get_caps("tests/openbmb-MiniCPM3-4B.jinja");
-    EXPECT_TRUE(caps.supports_thinking);
-    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::THOUGHT_FIELD);
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::THOUGHT_FIELD);
 }
 
 // Pattern E: TOOL_PLAN_FIELD (Command-R7B) - requires tools
-TEST(ThinkingPatternTest, ToolPlanField_CommandR7B) {
+TEST(ReasoningFormatTest, ToolPlanField_CommandR7B) {
     auto caps = get_caps("tests/CohereForAI-c4ai-command-r7b-12-2024-tool_use.jinja");
-    EXPECT_TRUE(caps.supports_thinking);
-    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::TOOL_PLAN_FIELD);
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::TOOL_PLAN_FIELD);
     EXPECT_TRUE(caps.reasoning_requires_tools);
 }
 
-// Pattern NONE: Templates without thinking support
-TEST(ThinkingPatternTest, NoThinking_Gemma7b) {
+// Pattern NONE: Templates without reasoning support
+TEST(ReasoningFormatTest, NoReasoning_Gemma7b) {
     auto caps = get_caps("tests/google-gemma-7b-it.jinja");
-    EXPECT_FALSE(caps.supports_thinking);
-    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::NONE);
+    EXPECT_FALSE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::NONE);
 }
 
-TEST(ThinkingPatternTest, NoThinking_Llama31) {
+TEST(ReasoningFormatTest, NoReasoning_Llama31) {
     auto caps = get_caps("tests/meta-llama-Llama-3.1-8B-Instruct.jinja");
-    EXPECT_FALSE(caps.supports_thinking);
-    EXPECT_EQ(caps.thinking_pattern, minja::ThinkingPattern::NONE);
+    EXPECT_FALSE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::NONE);
 }
 

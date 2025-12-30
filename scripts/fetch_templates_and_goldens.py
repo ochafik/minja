@@ -75,9 +75,9 @@ def add_system(messages, system_prompt):
 
 from enum import Enum
 
-class ThinkingPattern(Enum):
+class ReasoningFormat(Enum):
     NONE = "NONE"
-    REASONING_CONTENT_FIELD = "REASONING_CONTENT_FIELD"  # message.reasoning_content (Qwen3, GLM-4.6/4.7)
+    REASONING_CONTENT = "REASONING_CONTENT"              # message.reasoning_content (Qwen3, GLM-4.6/4.7) - canonical format
     CONTENT_BLOCK_THINKING = "CONTENT_BLOCK_THINKING"    # content[].type == "thinking" (Ministral)
     CONTENT_BLOCK_THOUGHTS = "CONTENT_BLOCK_THOUGHTS"    # content[].type == "thoughts" (Apertus)
     THOUGHT_FIELD = "THOUGHT_FIELD"                      # message.thought (MiniCPM3)
@@ -96,11 +96,15 @@ class TemplateCaps:
     requires_object_arguments: bool = False
     requires_non_null_content: bool = False
     requires_typed_content: bool = False
-    # Thinking / reasoning capabilities
-    supports_thinking: bool = False
-    thinking_pattern: ThinkingPattern = ThinkingPattern.NONE
-    supports_clear_thinking: bool = False
+    # Reasoning capabilities (extended thinking / chain-of-thought)
+    supports_reasoning: bool = False
+    reasoning_format: ReasoningFormat = ReasoningFormat.NONE
     reasoning_requires_tools: bool = False
+    # Reasoning behavior flags
+    supports_reasoning_without_content: bool = False
+    supports_reasoning_with_content: bool = False
+    respects_enable_reasoning: bool = False
+    supports_reasoning_visibility: bool = False
 
     def to_json(self):
         return json.dumps({
@@ -325,7 +329,7 @@ class chat_template:
             dummy_user_msg,
             make_assistant_msg({"thinking": reasoning_needle}, "response"),
         ])
-        supports_thinking_field = reasoning_needle in out
+        supports_reasoning_field = reasoning_needle in out
 
         # Pattern B: content blocks with type="thinking" (Ministral)
         # To detect stringification, we check if the output contains structural markers
@@ -371,31 +375,31 @@ class chat_template:
             ])
             supports_tool_plan_field = reasoning_needle in out
 
-        # Determine the primary thinking pattern (in priority order)
+        # Determine the primary reasoning format (in priority order)
         # Field-based patterns are checked first as they are more specific
         # Content block patterns are checked last as many templates just stringify unknown content
         if supports_reasoning_content:
-            caps.supports_thinking = True
-            caps.thinking_pattern = ThinkingPattern.REASONING_CONTENT_FIELD
+            caps.supports_reasoning = True
+            caps.reasoning_format = ReasoningFormat.REASONING_CONTENT
         elif supports_thought_field:
-            caps.supports_thinking = True
-            caps.thinking_pattern = ThinkingPattern.THOUGHT_FIELD
-        elif supports_thinking_field:
-            caps.supports_thinking = True
-            caps.thinking_pattern = ThinkingPattern.THINKING_FIELD
+            caps.supports_reasoning = True
+            caps.reasoning_format = ReasoningFormat.THOUGHT_FIELD
+        elif supports_reasoning_field:
+            caps.supports_reasoning = True
+            caps.reasoning_format = ReasoningFormat.THINKING_FIELD
         elif supports_tool_plan_field:
-            caps.supports_thinking = True
-            caps.thinking_pattern = ThinkingPattern.TOOL_PLAN_FIELD
+            caps.supports_reasoning = True
+            caps.reasoning_format = ReasoningFormat.TOOL_PLAN_FIELD
             caps.reasoning_requires_tools = True
         elif supports_content_block_thinking:
-            caps.supports_thinking = True
-            caps.thinking_pattern = ThinkingPattern.CONTENT_BLOCK_THINKING
+            caps.supports_reasoning = True
+            caps.reasoning_format = ReasoningFormat.CONTENT_BLOCK_THINKING
         elif supports_content_block_thoughts:
-            caps.supports_thinking = True
-            caps.thinking_pattern = ThinkingPattern.CONTENT_BLOCK_THOUGHTS
+            caps.supports_reasoning = True
+            caps.reasoning_format = ReasoningFormat.CONTENT_BLOCK_THOUGHTS
 
         # Test clear_thinking support (GLM-4.7 pattern)
-        if caps.thinking_pattern == ThinkingPattern.REASONING_CONTENT_FIELD:
+        if caps.reasoning_format == ReasoningFormat.REASONING_CONTENT:
             first_reasoning = "<FIRST_REASONING>"
             second_reasoning = "<SECOND_REASONING>"
             out = self.try_raw_render([
@@ -404,7 +408,69 @@ class chat_template:
                 dummy_user_msg,
                 make_assistant_msg({"reasoning_content": second_reasoning}, "second"),
             ], extra_context={"clear_thinking": False})
-            caps.supports_clear_thinking = first_reasoning in out and second_reasoning in out
+            caps.supports_reasoning_visibility = first_reasoning in out and second_reasoning in out
+
+        # Test reasoning behavior flags for templates that support reasoning
+        if caps.supports_reasoning:
+            reasoning_test = "<REASON_TEST>"
+            content_test = "<CONTENT_TEST>"
+
+            # Helper to create assistant message with reasoning in the template's native format
+            def make_reasoning_msg(reasoning: str, content: str) -> dict:
+                fmt = caps.reasoning_format
+                if fmt == ReasoningFormat.REASONING_CONTENT:
+                    return {"role": "assistant", "reasoning_content": reasoning, "content": content}
+                elif fmt == ReasoningFormat.THOUGHT_FIELD:
+                    return {"role": "assistant", "thought": reasoning, "content": content}
+                elif fmt == ReasoningFormat.THINKING_FIELD:
+                    return {"role": "assistant", "thinking": reasoning, "content": content}
+                elif fmt == ReasoningFormat.TOOL_PLAN_FIELD:
+                    dummy_args = dummy_args_obj if caps.requires_object_arguments else json.dumps(dummy_args_obj)
+                    return {
+                        "role": "assistant",
+                        "content": "" if caps.requires_non_null_content else None,
+                        "tool_plan": reasoning,
+                        "tool_calls": [make_tool_call("test_tool", dummy_args)]
+                    }
+                elif fmt == ReasoningFormat.CONTENT_BLOCK_THINKING:
+                    return {
+                        "role": "assistant",
+                        "content": [
+                            {"type": "thinking", "thinking": reasoning},
+                            {"type": "text", "text": content}
+                        ]
+                    }
+                elif fmt == ReasoningFormat.CONTENT_BLOCK_THOUGHTS:
+                    return {
+                        "role": "assistant",
+                        "content": [
+                            {"type": "thoughts", "text": reasoning},
+                            {"type": "text", "text": content}
+                        ]
+                    }
+                return {"role": "assistant", "content": content}
+
+            # Test supports_reasoning_without_content: can template emit reasoning with empty content?
+            # Skip for TOOL_PLAN_FIELD since it requires tool_calls which have different semantics
+            if caps.reasoning_format != ReasoningFormat.TOOL_PLAN_FIELD:
+                out = self.try_raw_render([dummy_user_msg, make_reasoning_msg(reasoning_test, "")])
+                caps.supports_reasoning_without_content = reasoning_test in out
+
+            # Test supports_reasoning_with_content: can template emit both reasoning and content together?
+            # Skip for TOOL_PLAN_FIELD since tool calls don't have regular content
+            if caps.reasoning_format != ReasoningFormat.TOOL_PLAN_FIELD:
+                out = self.try_raw_render([dummy_user_msg, make_reasoning_msg(reasoning_test, content_test)])
+                caps.supports_reasoning_with_content = reasoning_test in out and content_test in out
+
+            # Test respects_enable_reasoning: does template honor enable_thinking=false?
+            # Only test for REASONING_CONTENT format where this flag is commonly used (Qwen3)
+            if caps.reasoning_format == ReasoningFormat.REASONING_CONTENT:
+                out = self.try_raw_render(
+                    [dummy_user_msg, make_reasoning_msg(reasoning_test, content_test)],
+                    extra_context={"enable_thinking": False}
+                )
+                # If reasoning disappears but content remains when enable_thinking=false, template respects it
+                caps.respects_enable_reasoning = reasoning_test not in out and content_test in out
 
         self.original_caps = caps
 
@@ -418,10 +484,10 @@ class chat_template:
             for msg in context.get('messages', [])
         )
         # Polyfill reasoning_content to template's native format when template supports
-        # a different thinking pattern than REASONING_CONTENT_FIELD
+        # a different reasoning format than REASONING_CONTENT (the canonical format)
         needs_reasoning_polyfill = has_reasoning_content \
-            and caps.thinking_pattern != ThinkingPattern.NONE \
-            and caps.thinking_pattern != ThinkingPattern.REASONING_CONTENT_FIELD
+            and caps.reasoning_format != ReasoningFormat.NONE \
+            and caps.reasoning_format != ReasoningFormat.REASONING_CONTENT
 
         return not caps.supports_system_role \
             or (has_tools is not None and (False \
@@ -482,26 +548,26 @@ class chat_template:
                     del message['name']
 
                 # Polyfill reasoning_content to template's native format
-                should_polyfill_reasoning = caps.thinking_pattern not in (
-                    ThinkingPattern.NONE,
-                    ThinkingPattern.REASONING_CONTENT_FIELD,
+                should_polyfill_reasoning = caps.reasoning_format not in (
+                    ReasoningFormat.NONE,
+                    ReasoningFormat.REASONING_CONTENT,
                 )
                 if should_polyfill_reasoning and 'reasoning_content' in message and message['reasoning_content'] is not None:
                     reasoning = message['reasoning_content']
-                    if caps.thinking_pattern == ThinkingPattern.THOUGHT_FIELD:
+                    if caps.reasoning_format == ReasoningFormat.THOUGHT_FIELD:
                         # MiniCPM3 style: message.thought
                         message['thought'] = reasoning
                         del message['reasoning_content']
-                    elif caps.thinking_pattern == ThinkingPattern.THINKING_FIELD:
+                    elif caps.reasoning_format == ReasoningFormat.THINKING_FIELD:
                         # GPT-OSS-120B style: message.thinking
                         message['thinking'] = reasoning
                         del message['reasoning_content']
-                    elif caps.thinking_pattern == ThinkingPattern.TOOL_PLAN_FIELD:
+                    elif caps.reasoning_format == ReasoningFormat.TOOL_PLAN_FIELD:
                         # Command-R7B style: message.tool_plan (only with tool_calls)
                         if 'tool_calls' in message:
                             message['tool_plan'] = reasoning
                         del message['reasoning_content']
-                    elif caps.thinking_pattern == ThinkingPattern.CONTENT_BLOCK_THINKING:
+                    elif caps.reasoning_format == ReasoningFormat.CONTENT_BLOCK_THINKING:
                         # Ministral style: content blocks with type="thinking"
                         content_blocks = [{"type": "thinking", "thinking": reasoning}]
                         original_content = message.get('content')
@@ -512,7 +578,7 @@ class chat_template:
                                 content_blocks.extend(original_content)
                         message['content'] = content_blocks
                         del message['reasoning_content']
-                    elif caps.thinking_pattern == ThinkingPattern.CONTENT_BLOCK_THOUGHTS:
+                    elif caps.reasoning_format == ReasoningFormat.CONTENT_BLOCK_THOUGHTS:
                         # Apertus style: content blocks with type="thoughts"
                         content_blocks = [{"type": "thoughts", "text": reasoning}]
                         original_content = message.get('content')

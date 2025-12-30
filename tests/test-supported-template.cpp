@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
 
-            // Check expected_strings_if_supports_thinking (with additional conditions)
+            // Check expected_strings_if_supports_reasoning (with additional conditions)
             // If context uses clear_thinking, only check if template supports it
             // If template requires tools for reasoning (TOOL_PLAN_FIELD), only check if context has tool_calls
             bool context_uses_clear_thinking = original_ctx.contains("clear_thinking");
@@ -223,10 +223,10 @@ int main(int argc, char *argv[]) {
                     break;
                 }
             }
-            bool should_check_thinking_strings = caps.supports_thinking
-                && (!context_uses_clear_thinking || caps.supports_clear_thinking)
+            bool should_check_reasoning_strings = caps.supports_reasoning
+                && (!context_uses_clear_thinking || caps.supports_reasoning_visibility)
                 && (!caps.reasoning_requires_tools || context_has_tool_calls);
-            if (!check_expected_strings("expected_strings_if_supports_thinking", should_check_thinking_strings, "thinking")) {
+            if (!check_expected_strings("expected_strings_if_supports_reasoning", should_check_reasoning_strings, "reasoning")) {
                 return 1;
             }
 

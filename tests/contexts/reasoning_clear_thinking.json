@@ -25,7 +25,7 @@
   "eos_token": "<|endoftext|>",
   "_test_metadata": {
     "_comment": "clear_thinking=false should show ALL reasoning (even past messages)",
-    "expected_strings_if_supports_thinking": ["Simple arithmetic: 2+2=4", "Similarly: 3+3=6"],
+    "expected_strings_if_supports_reasoning": ["Simple arithmetic: 2+2=4", "Similarly: 3+3=6"],
     "forbidden_strings": ["\"reasoning_content\""]
   }
 }

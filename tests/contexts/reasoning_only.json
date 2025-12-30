@@ -14,8 +14,8 @@
   "bos_token": "<|startoftext|>",
   "eos_token": "<|endoftext|>",
   "_test_metadata": {
-    "_comment": "For templates with supports_thinking=true, reasoning should appear in output",
-    "expected_strings_if_supports_thinking": ["Let me calculate: 2+2 equals 4.", "The answer is 4."],
+    "_comment": "For templates with supports_reasoning=true, reasoning should appear in output",
+    "expected_strings_if_supports_reasoning": ["Let me calculate: 2+2 equals 4.", "The answer is 4."],
     "forbidden_strings": ["\"reasoning_content\""]
   }
 }

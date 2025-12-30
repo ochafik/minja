@@ -33,7 +33,7 @@
   "eos_token": "<|endoftext|>",
   "_test_metadata": {
     "_comment": "Multi-turn reasoning. Final reasoning should always appear, earlier may be hidden",
-    "expected_strings_if_supports_thinking": ["Even and less than 5 means it's either 2 or 4.", "The number must be 2 or 4!"],
+    "expected_strings_if_supports_reasoning": ["Even and less than 5 means it's either 2 or 4.", "The number must be 2 or 4!"],
     "forbidden_strings": ["\"reasoning_content\""]
   }
 }
