@@ -6,7 +6,7 @@
     },
     {
       "role": "assistant",
-      "reasoning_content": "I need to first get the weather in Paris, then convert the temperature.",
+      "reasoning_content": "I need to first get the weather in \"Paris\", then convert the temperature.",
       "content": "",
       "tool_calls": [
         {
@@ -48,7 +48,7 @@
     },
     {
       "role": "assistant",
-      "content": "The weather in Paris is sunny at 20°C (68°F)."
+      "content": "The weather in Paris is sunny at \"twenty\" degrees (68°F)."
     }
   ],
   "add_generation_prompt": true,
@@ -91,10 +91,10 @@
     }
   ],
   "_test_metadata": {
-    "_comment": "Multi-step tool use with reasoning. Tests TOOL_PLAN_FIELD format (Command-R7B) where reasoning accompanies each tool call",
-    "expected_strings": ["The weather in Paris is sunny at 20°C (68°F)."],
+    "_comment": "Multi-step tool use with reasoning. Quote in reasoning_content and content tests non-stringification.",
+    "expected_strings": ["The weather in Paris is sunny at \"twenty\" degrees (68°F)."],
     "expected_strings_if_supports_tool_calls": ["get_weather", "convert_temperature"],
-    "expected_strings_if_supports_reasoning": ["I need to first get the weather", "convert: F = C * 9/5 + 32"],
-    "forbidden_strings": ["\"reasoning_content\"", "\"tool_plan\""]
+    "expected_strings_if_supports_reasoning": ["I need to first get the weather in \"Paris\"", "convert: F = C * 9/5 + 32"],
+    "forbidden_strings": ["\"reasoning_content\"", "\"tool_plan\"", "\\\"Paris\\\"", "\\\"twenty\\\""]
   }
 }

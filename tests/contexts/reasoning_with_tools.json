@@ -6,7 +6,7 @@
     },
     {
       "role": "assistant",
-      "reasoning_content": "I need to calculate 15% of $50. Let me use the calculator tool.",
+      "reasoning_content": "I need to calculate \"15%\" of $50. Let me use the calculator tool.",
       "content": "",
       "tool_calls": [
         {
@@ -28,7 +28,7 @@
     {
       "role": "assistant",
       "reasoning_content": "The calculation returned 7.5, so the tip is $7.50.",
-      "content": "A 15% tip on $50 is $7.50."
+      "content": "A 15% tip on $50 is \"$7.50\"."
     }
   ],
   "add_generation_prompt": true,
@@ -54,8 +54,8 @@
     }
   ],
   "_test_metadata": {
-    "_comment": "Reasoning with tool calls. Note: For TOOL_PLAN_FIELD templates, only reasoning in messages with tool_calls will appear",
-    "expected_strings_if_supports_reasoning": ["I need to calculate 15% of $50", "A 15% tip on $50 is $7.50."],
-    "forbidden_strings": ["\"reasoning_content\""]
+    "_comment": "Reasoning with tool calls. Quote in reasoning_content and content tests non-stringification.",
+    "expected_strings_if_supports_reasoning": ["I need to calculate \"15%\" of $50", "A 15% tip on $50 is \"$7.50\"."],
+    "forbidden_strings": ["\"reasoning_content\"", "\\\"15%\\\"", "\\\"$7.50\\\""]
   }
 }

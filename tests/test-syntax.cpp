@@ -262,6 +262,14 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         R"({"a": "b"})",
         render(R"({{ {"a": "b"} | tojson }})", {}, {}));
+    // Test tojson with compact separators (used by Kimi K2 template)
+    EXPECT_EQ(
+        R"({"a":"b","c":[1,2]})",
+        render(R"({{ {"a": "b", "c": [1, 2]} | tojson(separators=(',', ':')) }})", {}, {}));
+    // Test tojson with exotic separators to verify they're actually used
+    EXPECT_EQ(
+        R"({"a"=>"b";"c"=>[1;2]})",
+        render(R"({{ {"a": "b", "c": [1, 2]} | tojson(separators=(';', '=>')) }})", {}, {}));
     EXPECT_EQ(
         R"({'a': 'b'})",
         render(R"({{ {"a": "b"} }})", {}, {}));

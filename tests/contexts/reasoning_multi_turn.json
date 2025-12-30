@@ -24,16 +24,16 @@
     },
     {
       "role": "assistant",
-      "reasoning_content": "Even and less than 5 means it's either 2 or 4.",
-      "content": "The number must be 2 or 4!"
+      "reasoning_content": "Even and less than 5 means it's \"either\" 2 or 4.",
+      "content": "The number must be \"2 or 4\"!"
     }
   ],
   "add_generation_prompt": true,
   "bos_token": "<|startoftext|>",
   "eos_token": "<|endoftext|>",
   "_test_metadata": {
-    "_comment": "Multi-turn reasoning. Final reasoning should always appear, earlier may be hidden",
-    "expected_strings_if_supports_reasoning": ["Even and less than 5 means it's either 2 or 4.", "The number must be 2 or 4!"],
-    "forbidden_strings": ["\"reasoning_content\""]
+    "_comment": "Multi-turn reasoning. Quote in reasoning_content and content tests non-stringification.",
+    "expected_strings_if_supports_reasoning": ["Even and less than 5 means it's \"either\" 2 or 4.", "The number must be \"2 or 4\"!"],
+    "forbidden_strings": ["\"reasoning_content\"", "\\\"either\\\"", "\\\"2 or 4\\\""]
   }
 }

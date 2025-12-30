@@ -6,7 +6,7 @@
     },
     {
       "role": "assistant",
-      "content": "llama.cpp!"
+      "content": "I'd say \"llama.cpp\"!"
     }
   ],
   "add_generation_prompt": true,
@@ -14,7 +14,8 @@
   "eos_token": "<|endoftext|>",
   "tools_in_user_message": false,
   "_test_metadata": {
-    "_comment": "Basic conversation without tools or system message",
-    "expected_strings": ["What's your favourite LLM framework?", "llama.cpp!"]
+    "_comment": "Basic conversation without tools or system message. Quote in content tests non-stringification.",
+    "expected_strings": ["What's your favourite LLM framework?", "I'd say \"llama.cpp\"!"],
+    "forbidden_strings": ["\\\"llama.cpp\\\""]
   }
 }

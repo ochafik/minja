@@ -158,6 +158,7 @@ set(MODEL_IDS
     llava-hf/llava-1.5-7b-hf
     meetkai/functionary-medium-v3.1
     meetkai/functionary-medium-v3.2
+    moonshotai/Kimi-K2-Instruct
     meta-llama/Llama-2-7b-chat-hf
     meta-llama/Llama-3.1-8B-Instruct
     meta-llama/Llama-3.2-3B-Instruct

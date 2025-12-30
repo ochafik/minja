@@ -50,8 +50,8 @@ def strftime_now(format):
     now = datetime.datetime.strptime(TEST_DATE, "%Y-%m-%d")
     return now.strftime(format)
 
-def tojson(value, indent=None, ensure_ascii=False, sort_keys=False):
-    return json.dumps(value, indent=indent, ensure_ascii=ensure_ascii, sort_keys=sort_keys)
+def tojson(value, indent=None, ensure_ascii=False, sort_keys=False, separators=None):
+    return json.dumps(value, indent=indent, ensure_ascii=ensure_ascii, sort_keys=sort_keys, separators=separators)
 
 def join_cmake_path(parent, child):
     '''
@@ -95,7 +95,7 @@ class TemplateCaps:
     supports_tool_call_id: bool = False
     requires_object_arguments: bool = False
     requires_non_null_content: bool = False
-    requires_typed_content: bool = False
+    requires_typed_content_blocks: bool = False
     # Reasoning capabilities (extended thinking / chain-of-thought)
     supports_reasoning: bool = False
     reasoning_format: ReasoningFormat = ReasoningFormat.NONE
@@ -116,7 +116,7 @@ class TemplateCaps:
             "supports_tool_call_id": self.supports_tool_call_id,
             "requires_object_arguments": self.requires_object_arguments,
             # "requires_non_null_content": self.requires_non_null_content,
-            "requires_typed_content": self.requires_typed_content,
+            "requires_typed_content_blocks": self.requires_typed_content_blocks,
         }, indent=2)
 
 
@@ -162,12 +162,12 @@ class chat_template:
         dummy_str_user_msg = {"role": "user", "content": user_needle }
         dummy_typed_user_msg = {"role": "user", "content": [{"type": "text", "text": user_needle}]}
 
-        caps.requires_typed_content = \
+        caps.requires_typed_content_blocks = \
             (user_needle not in self.try_raw_render([dummy_str_user_msg])) \
             and (user_needle in self.try_raw_render([dummy_typed_user_msg]))
-        dummy_user_msg = dummy_typed_user_msg if caps.requires_typed_content else dummy_str_user_msg
+        dummy_user_msg = dummy_typed_user_msg if caps.requires_typed_content_blocks else dummy_str_user_msg
 
-        needle_system_msg = {"role": "system", "content": [{"type": "text", "text": sys_needle}] if caps.requires_typed_content else sys_needle}
+        needle_system_msg = {"role": "system", "content": [{"type": "text", "text": sys_needle}] if caps.requires_typed_content_blocks else sys_needle}
 
         caps.supports_system_role = sys_needle in self.try_raw_render([needle_system_msg, dummy_user_msg])
 
@@ -496,7 +496,7 @@ class chat_template:
                 or not caps.supports_tool_calls \
                 or caps.requires_object_arguments \
             )) \
-            or caps.requires_typed_content \
+            or caps.requires_typed_content_blocks \
             or needs_reasoning_polyfill
 
     def apply(self, context: dict):
@@ -590,7 +590,7 @@ class chat_template:
                         message['content'] = content_blocks
                         del message['reasoning_content']
 
-            if caps.requires_typed_content:
+            if caps.requires_typed_content_blocks:
                 for message in context['messages']:
                     if 'content' in message and isinstance(message['content'], str):
                         message['content'] = [{"type": "text", "text": message['content']}]
