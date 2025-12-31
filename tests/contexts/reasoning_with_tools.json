@@ -1,0 +1,61 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Calculate 15% tip on $50"
+    },
+    {
+      "role": "assistant",
+      "reasoning_content": "I need to calculate \"15%\" of $50. Let me use the calculator tool.",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_1___",
+          "type": "function",
+          "function": {
+            "name": "calculator",
+            "arguments": "{\"expression\": \"50 * 0.15\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1___",
+      "name": "calculator",
+      "content": "7.5"
+    },
+    {
+      "role": "assistant",
+      "reasoning_content": "The calculation returned 7.5, so the tip is $7.50.",
+      "content": "A 15% tip on $50 is \"$7.50\"."
+    }
+  ],
+  "add_generation_prompt": true,
+  "bos_token": "<|startoftext|>",
+  "eos_token": "<|endoftext|>",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "calculator",
+        "description": "Evaluate a mathematical expression",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "expression": {
+              "type": "string",
+              "description": "The mathematical expression to evaluate."
+            }
+          },
+          "required": ["expression"]
+        }
+      }
+    }
+  ],
+  "_test_metadata": {
+    "_comment": "Reasoning with tool calls. Quote in reasoning_content and content tests non-stringification.",
+    "expected_strings_if_supports_reasoning": ["I need to calculate \"15%\" of $50", "A 15% tip on $50 is \"$7.50\"."],
+    "forbidden_strings": ["\"reasoning_content\"", "\\\"15%\\\"", "\\\"$7.50\\\""]
+  }
+}

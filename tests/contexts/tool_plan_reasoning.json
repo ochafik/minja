@@ -1,0 +1,100 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "What's the weather in Paris and convert it to Fahrenheit?"
+    },
+    {
+      "role": "assistant",
+      "reasoning_content": "I need to first get the weather in \"Paris\", then convert the temperature.",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_1___",
+          "type": "function",
+          "function": {
+            "name": "get_weather",
+            "arguments": "{\"city\": \"Paris\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1___",
+      "name": "get_weather",
+      "content": "{\"temperature\": 20, \"unit\": \"celsius\", \"condition\": \"sunny\"}"
+    },
+    {
+      "role": "assistant",
+      "reasoning_content": "Got 20°C. Now I need to convert: F = C * 9/5 + 32 = 20 * 1.8 + 32 = 68°F",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_2___",
+          "type": "function",
+          "function": {
+            "name": "convert_temperature",
+            "arguments": "{\"celsius\": 20}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_2___",
+      "name": "convert_temperature",
+      "content": "{\"fahrenheit\": 68}"
+    },
+    {
+      "role": "assistant",
+      "content": "The weather in Paris is sunny at \"twenty\" degrees (68°F)."
+    }
+  ],
+  "add_generation_prompt": true,
+  "bos_token": "<|startoftext|>",
+  "eos_token": "<|endoftext|>",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "Get the current weather for a city",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {
+              "type": "string",
+              "description": "The city name"
+            }
+          },
+          "required": ["city"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "convert_temperature",
+        "description": "Convert Celsius to Fahrenheit",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "celsius": {
+              "type": "number",
+              "description": "Temperature in Celsius"
+            }
+          },
+          "required": ["celsius"]
+        }
+      }
+    }
+  ],
+  "_test_metadata": {
+    "_comment": "Multi-step tool use with reasoning. Quote in reasoning_content and content tests non-stringification.",
+    "expected_strings": ["The weather in Paris is sunny at \"twenty\" degrees (68°F)."],
+    "expected_strings_if_supports_tool_calls": ["get_weather", "convert_temperature"],
+    "expected_strings_if_supports_reasoning": ["I need to first get the weather in \"Paris\"", "convert: F = C * 9/5 + 32"],
+    "forbidden_strings": ["\"reasoning_content\"", "\"tool_plan\"", "\\\"Paris\\\"", "\\\"twenty\\\""]
+  }
+}

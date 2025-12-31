@@ -44,7 +44,9 @@ FetchContent_MakeAvailable(minja)
 target_link_libraries(<YOUR_TARGET> PRIVATE minja)
 ```
 
-See API in [minja/minja.hpp](./include/minja/minja.hpp) and [minja/chat-template.hpp](./include/minja/chat-template.hpp) (experimental).
+See API in [minja/minja.hpp](./include/minja/minja.hpp) and [minja/chat-template.hpp](./include/minja/chat-template.hpp).
+
+For chat template capabilities detection and automatic polyfills (reasoning formats, tool calls, etc.), see [docs/CAPABILITIES_AND_POLYFILLS.md](./docs/CAPABILITIES_AND_POLYFILLS.md).
 
 For raw Jinja templating (see [examples/raw.cpp](./examples/raw.cpp)):
 
@@ -124,7 +126,7 @@ Main limitations (non-exhaustive list):
 ## Roadmap / TODOs
 
 - [ ] Fix known line difference issues on Windows
-- [ ] Document the various capabilities detectors + backfill strategies used
+- [x] Document the various capabilities detectors + backfill strategies used (see [docs/CAPABILITIES_AND_POLYFILLS.md](./docs/CAPABILITIES_AND_POLYFILLS.md))
 - [ ] Propose integration w/ https://github.com/google/gemma.cpp
 - [x] Integrate to llama.cpp: https://github.com/ggerganov/llama.cpp/pull/11016 + https://github.com/ggerganov/llama.cpp/pull/9639
 - Improve fuzzing coverage:
