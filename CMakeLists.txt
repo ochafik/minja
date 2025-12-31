@@ -154,10 +154,6 @@ if(MINJA_EXAMPLE_ENABLED)
     add_subdirectory(examples)
 endif()
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/tools")
-    add_subdirectory(tools)
-endif()
-
 if(MINJA_TEST_ENABLED)
     enable_testing()
     include(GoogleTest)

@@ -387,12 +387,15 @@ TEST(ReasoningFormatTest, ThoughtField_MiniCPM3) {
 }
 
 // Pattern E: TOOL_PLAN_FIELD (Command-R7B) - requires tools
+// Note: Command-R7B is excluded on Windows (https://github.com/google/minja/issues/40)
+#ifndef _WIN32
 TEST(ReasoningFormatTest, ToolPlanField_CommandR7B) {
     auto caps = get_caps("tests/CohereForAI-c4ai-command-r7b-12-2024-tool_use.jinja");
     EXPECT_TRUE(caps.supports_reasoning);
     EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::TOOL_PLAN_FIELD);
     EXPECT_TRUE(caps.reasoning_requires_tools);
 }
+#endif // _WIN32
 
 // Pattern NONE: Templates without reasoning support
 TEST(ReasoningFormatTest, NoReasoning_Gemma7b) {
