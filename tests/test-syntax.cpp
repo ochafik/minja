@@ -79,17 +79,18 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ("bcXYZab", render("{{ 'abcXYZabc'.strip('ac') }}", {}, {}));
 
     EXPECT_EQ(R"(["a", "b"])", render("{{ 'a b'.split(' ') | tojson }}", {}, {}));
-
-    // Test rsplit (reverse split) method
-    // rsplit splits from right to left, similar to Python's str.rsplit()
-    // While no official HuggingFace model templates currently use rsplit directly,
-    // several models use the equivalent pattern split()[-1] for extracting content:
-    // - deepseek-ai/DeepSeek-R1-Distill-Llama-70B uses: content.split('</think>')[-1]
-    // - Qwen/Qwen3-235B-A22B-Thinking-2507 uses similar patterns for thinking tags
-    // rsplit provides a more efficient and semantically clearer way to achieve this.
+ 
+    // Test rsplit (reverse split) with maxsplit parameter
+    // rsplit splits from right to left, which is crucial for extracting content after the last delimiter
+    // Used in chat templates like DeepSeek-R1: content.rsplit('</think>', 1)[-1]
+    EXPECT_EQ(R"(["a-b", "c"])", render("{{ 'a-b-c'.rsplit('-', 1) | tojson }}", {}, {}));
+    EXPECT_EQ(R"(["a", "b-c"])", render("{{ 'a-b-c'.split('-', 1) | tojson }}", {}, {}));
+    EXPECT_EQ(R"(["prefix</think>middle", "suffix"])", render("{{ 'prefix</think>middle</think>suffix'.rsplit('</think>', 1) | tojson }}", {}, {}));
+    
+    // Test rsplit with indexing - extract content after the last delimiter
+    EXPECT_EQ(" suffix", render("{{ 'prefix</think>middle</think> suffix'.rsplit('</think>', 1)[-1] }}", {}, {}));
     EXPECT_EQ(R"(["a", "b", "c"])", render("{{ 'a-b-c'.rsplit('-') | tojson }}", {}, {}));
-    EXPECT_EQ(R"(["prefix", "middle", "suffix"])", render("{{ 'prefix</think>middle</think>suffix'.rsplit('</think>') | tojson }}", {}, {}));
-    EXPECT_EQ("suffix", render("{{ 'prefix</think>middle</think>suffix'.rsplit('</think>')[-1] }}", {}, {}));
+
 
     EXPECT_EQ(
         "Ok",

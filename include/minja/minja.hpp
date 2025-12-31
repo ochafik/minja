@@ -1451,26 +1451,30 @@ static std::string strip(const std::string & s, const std::string & chars = "", 
   return s.substr(start, end - start + 1);
 }
 
-static std::vector<std::string> split(const std::string & s, const std::string & sep) {
+static std::vector<std::string> split(const std::string & s, const std::string & sep, int maxsplit = -1) {
   std::vector<std::string> result;
   size_t start = 0;
   size_t end = s.find(sep);
-  while (end != std::string::npos) {
+  int splits = 0;
+  while (end != std::string::npos && (maxsplit < 0 || splits < maxsplit)) {
     result.push_back(s.substr(start, end - start));
     start = end + sep.length();
     end = s.find(sep, start);
+    splits++;
   }
   result.push_back(s.substr(start));
   return result;
 }
 
-static std::vector<std::string> rsplit(const std::string & s, const std::string & sep) {
+static std::vector<std::string> rsplit(const std::string & s, const std::string & sep, int maxsplit = -1) {
   std::vector<std::string> result;
   size_t end = s.length();
   size_t pos = s.rfind(sep);
-  while (pos != std::string::npos) {
+  int splits = 0;
+  while (pos != std::string::npos && (maxsplit < 0 || splits < maxsplit)) {
     result.insert(result.begin(), s.substr(pos + sep.length(), end - pos - sep.length()));
     end = pos;
+    splits++;
     if (pos == 0) break;
     pos = s.rfind(sep, pos - 1);
   }
@@ -1580,18 +1584,20 @@ public:
             auto chars = vargs.args.empty() ? "" : vargs.args[0].get<std::string>();
             return Value(strip(str, chars, /* left= */ false, /* right= */ true));
           } else if (method->get_name() == "split") {
-            vargs.expectArgs("split method", {1, 1}, {0, 0});
+            vargs.expectArgs("split method", {1, 2}, {0, 0});
             auto sep = vargs.args[0].get<std::string>();
-            auto parts = split(str, sep);
+            int maxsplit = vargs.args.size() > 1 ? vargs.args[1].to_int() : -1;
+            auto parts = split(str, sep, maxsplit);
             Value result = Value::array();
             for (const auto& part : parts) {
               result.push_back(Value(part));
             }
             return result;
           } else if (method->get_name() == "rsplit") {
-            vargs.expectArgs("rsplit method", {1, 1}, {0, 0});
+            vargs.expectArgs("rsplit method", {1, 2}, {0, 0});
             auto sep = vargs.args[0].get<std::string>();
-            auto parts = rsplit(str, sep);
+            int maxsplit = vargs.args.size() > 1 ? vargs.args[1].to_int() : -1;
+            auto parts = rsplit(str, sep, maxsplit);
             Value result = Value::array();
             for (const auto& part : parts) {
               result.push_back(Value(part));
