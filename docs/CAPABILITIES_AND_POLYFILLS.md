@@ -43,7 +43,7 @@ When a `chat_template` is constructed, minja probes the template with test messa
 | `supports_clear_thinking` | Template respects `clear_thinking` flag for visibility control |
 | `supports_reasoning_without_content` | Can emit reasoning with empty content |
 | `supports_reasoning_with_content` | Can emit both reasoning and content together |
-| `respects_enable_reasoning` | Template honors `enable_thinking=false` |
+| `supports_enable_thinking` | Template honors `enable_thinking=false` |
 
 ## Reasoning Formats
 

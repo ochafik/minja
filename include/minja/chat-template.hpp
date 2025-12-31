@@ -63,7 +63,7 @@ struct chat_template_caps {
     // Reasoning behavior flags (computed via detection probes)
     bool supports_reasoning_without_content = false;  // Can emit reasoning with empty/null content
     bool supports_reasoning_with_content = false;     // Can emit both reasoning and content together
-    bool respects_enable_reasoning = false;           // Template responds to enable_thinking=false
+    bool supports_enable_thinking = false;            // Template responds to enable_thinking=false
 
     // Whether template supports reasoning visibility control (GLM-4.7's clear_thinking flag)
     // When clear_thinking=false, all reasoning is shown; when true/default, position-based visibility
@@ -486,7 +486,7 @@ class chat_template {
                 caps_.supports_reasoning_with_content = contains(out, reasoning_test) && contains(out, content_test);
             }
 
-            // Test respects_enable_reasoning: does template honor enable_thinking=false?
+            // Test supports_enable_thinking: does template honor enable_thinking=false?
             // Only test for REASONING_CONTENT_FIELD format where this flag is commonly used (Qwen3)
             if (caps_.reasoning_format == ReasoningFormat::REASONING_CONTENT_FIELD) {
                 json disable_ctx = {{"enable_thinking", false}};
@@ -495,7 +495,7 @@ class chat_template {
                     make_reasoning_msg(reasoning_test, content_test),
                 }), {}, false, disable_ctx);
                 // If reasoning disappears but content remains when enable_thinking=false, template respects it
-                caps_.respects_enable_reasoning = !contains(out, reasoning_test) && contains(out, content_test);
+                caps_.supports_enable_thinking = !contains(out, reasoning_test) && contains(out, content_test);
             }
         }
 

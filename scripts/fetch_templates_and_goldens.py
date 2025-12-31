@@ -103,7 +103,7 @@ class TemplateCaps:
     # Reasoning behavior flags
     supports_reasoning_without_content: bool = False
     supports_reasoning_with_content: bool = False
-    respects_enable_reasoning: bool = False
+    supports_enable_thinking: bool = False
     supports_clear_thinking: bool = False
 
     def to_json(self):
@@ -462,7 +462,7 @@ class chat_template:
                 out = self.try_raw_render([dummy_user_msg, make_reasoning_msg(reasoning_test, content_test)])
                 caps.supports_reasoning_with_content = reasoning_test in out and content_test in out
 
-            # Test respects_enable_reasoning: does template honor enable_thinking=false?
+            # Test supports_enable_thinking: does template honor enable_thinking=false?
             # Only test for REASONING_CONTENT format where this flag is commonly used (Qwen3)
             if caps.reasoning_format == ReasoningFormat.REASONING_CONTENT:
                 out = self.try_raw_render(
@@ -470,7 +470,7 @@ class chat_template:
                     extra_context={"enable_thinking": False}
                 )
                 # If reasoning disappears but content remains when enable_thinking=false, template respects it
-                caps.respects_enable_reasoning = reasoning_test not in out and content_test in out
+                caps.supports_enable_thinking = reasoning_test not in out and content_test in out
 
         self.original_caps = caps
 

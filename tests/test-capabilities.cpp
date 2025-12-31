@@ -77,7 +77,7 @@ static minja::chat_template_caps get_caps(const std::string &path)
     print("reasoning_requires_tools",        caps.reasoning_requires_tools);
     print("supports_reasoning_without_content", caps.supports_reasoning_without_content);
     print("supports_reasoning_with_content", caps.supports_reasoning_with_content);
-    print("respects_enable_reasoning",       caps.respects_enable_reasoning);
+    print("supports_enable_thinking",        caps.supports_enable_thinking);
     print("supports_clear_thinking",   caps.supports_clear_thinking);
     std::cout << "    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::" << reasoning_format_to_string(caps.reasoning_format) << ");" << std::endl;
     std::cout << "}\n" << std::endl;
