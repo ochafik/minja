@@ -1861,7 +1861,7 @@ private:
         auto start = it;
         consumeSpaces(space_handling);
         std::smatch match;
-        if (std::regex_search(it, end, match, regex) && match.position() == 0) {
+        if (std::regex_search(it, end, match, regex, std::regex_constants::match_continuous) && match.position() == 0) {
             it += match[0].length();
             std::vector<std::string> ret;
             for (size_t i = 0, n = match.size(); i < n; ++i) {
@@ -1876,7 +1876,7 @@ private:
         auto start = it;
         consumeSpaces(space_handling);
         std::smatch match;
-        if (std::regex_search(it, end, match, regex) && match.position() == 0) {
+        if (std::regex_search(it, end, match, regex, std::regex_constants::match_continuous) && match.position() == 0) {
             it += match[0].length();
             return match[0].str();
         }
