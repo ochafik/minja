@@ -39,6 +39,19 @@ static std::string read_file(const std::string &path)
     return out;
 }
 
+static std::string reasoning_format_to_string(minja::ReasoningFormat format) {
+    switch (format) {
+        case minja::ReasoningFormat::NONE: return "NONE";
+        case minja::ReasoningFormat::REASONING_CONTENT_FIELD: return "REASONING_CONTENT_FIELD";
+        case minja::ReasoningFormat::THINKING_CONTENT_BLOCK: return "THINKING_CONTENT_BLOCK";
+        case minja::ReasoningFormat::THOUGHTS_CONTENT_BLOCK: return "THOUGHTS_CONTENT_BLOCK";
+        case minja::ReasoningFormat::THOUGHT_FIELD: return "THOUGHT_FIELD";
+        case minja::ReasoningFormat::TOOL_PLAN_FIELD: return "TOOL_PLAN_FIELD";
+        case minja::ReasoningFormat::THINKING_FIELD: return "THINKING_FIELD";
+        default: return "UNKNOWN";
+    }
+}
+
 static minja::chat_template_caps get_caps(const std::string &path)
 {
     auto caps = minja::chat_template(read_file(path), "", "").original_caps();
@@ -58,8 +71,15 @@ static minja::chat_template_caps get_caps(const std::string &path)
     print("supports_parallel_tool_calls", caps.supports_parallel_tool_calls);
     print("requires_object_arguments",    caps.requires_object_arguments);
     print("requires_non_null_content",    caps.requires_non_null_content);
-    // print("requires_non_null_content",    caps.requires_non_null_content);
-    print("requires_typed_content",       caps.requires_typed_content);
+    print("requires_typed_content",       caps.requires_typed_content_blocks);
+    // Reasoning capabilities (extended thinking / chain-of-thought)
+    print("supports_reasoning",              caps.supports_reasoning);
+    print("reasoning_requires_tools",        caps.reasoning_requires_tools);
+    print("supports_reasoning_without_content", caps.supports_reasoning_without_content);
+    print("supports_reasoning_with_content", caps.supports_reasoning_with_content);
+    print("supports_enable_thinking",        caps.supports_enable_thinking);
+    print("supports_clear_thinking",   caps.supports_clear_thinking);
+    std::cout << "    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::" << reasoning_format_to_string(caps.reasoning_format) << ");" << std::endl;
     std::cout << "}\n" << std::endl;
 
     return caps;
@@ -75,7 +95,7 @@ TEST(CapabilitiesTest, Gemma7b) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, QwQ32B) {
@@ -88,7 +108,7 @@ TEST(CapabilitiesTest, QwQ32B) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_TRUE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, Qwen3Coder) {
@@ -101,7 +121,7 @@ TEST(CapabilitiesTest, Qwen3Coder) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 #ifndef _WIN32
@@ -115,7 +135,7 @@ TEST(CapabilitiesTest, DeepSeekR1Distill) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 #endif // _WIN32
 
@@ -129,7 +149,7 @@ TEST(CapabilitiesTest, FunctionaryMediumV3_2) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, MetaLlama3_1_8BInstruct) {
@@ -142,7 +162,7 @@ TEST(CapabilitiesTest, MetaLlama3_1_8BInstruct) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, MetaLlama3_2_3BInstruct) {
@@ -155,7 +175,7 @@ TEST(CapabilitiesTest, MetaLlama3_2_3BInstruct) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, MetaLlama3_3_70BInstruct) {
@@ -168,7 +188,7 @@ TEST(CapabilitiesTest, MetaLlama3_3_70BInstruct) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, MiniMaxAIText01) {
@@ -181,7 +201,7 @@ TEST(CapabilitiesTest, MiniMaxAIText01) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_TRUE(caps.requires_typed_content);
+    EXPECT_TRUE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, Mistral7BInstruct) {
@@ -194,7 +214,7 @@ TEST(CapabilitiesTest, Mistral7BInstruct) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, MistralNemoInstruct) {
@@ -207,7 +227,7 @@ TEST(CapabilitiesTest, MistralNemoInstruct) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, NousResearchHermes3Llama3_1_70BToolUse) {
@@ -220,7 +240,7 @@ TEST(CapabilitiesTest, NousResearchHermes3Llama3_1_70BToolUse) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, NousResearchHermes2ProLlama3_8BToolUse) {
@@ -233,7 +253,7 @@ TEST(CapabilitiesTest, NousResearchHermes2ProLlama3_8BToolUse) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, CommandRPlusDefault) {
@@ -246,7 +266,7 @@ TEST(CapabilitiesTest, CommandRPlusDefault) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_TRUE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, CommandRPlusRag) {
@@ -259,7 +279,7 @@ TEST(CapabilitiesTest, CommandRPlusRag) {
     EXPECT_FALSE(caps.supports_parallel_tool_calls);
     EXPECT_FALSE(caps.requires_object_arguments);
     EXPECT_TRUE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, CommandRPlusToolUse) {
@@ -272,7 +292,7 @@ TEST(CapabilitiesTest, CommandRPlusToolUse) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 TEST(CapabilitiesTest, GLM46) {
@@ -285,7 +305,7 @@ TEST(CapabilitiesTest, GLM46) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);
     EXPECT_TRUE(caps.requires_object_arguments);
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
 }
 
 // Synthetic template based on DeepSeek V3.2's DSML format (encoding_dsv32.py)
@@ -301,6 +321,116 @@ TEST(CapabilitiesTest, SyntheticDeepSeekV3_2_DSML) {
     EXPECT_TRUE(caps.supports_parallel_tool_calls);  // Iterates over tool_calls array
     EXPECT_TRUE(caps.requires_object_arguments);     // DSML iterates over argument keys
     EXPECT_FALSE(caps.requires_non_null_content);
-    EXPECT_FALSE(caps.requires_typed_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
+    // Reasoning capabilities - synthetic template doesn't support reasoning_content field
+    EXPECT_FALSE(caps.supports_reasoning);
+}
+
+// Reasoning model tests
+// Note: DeepSeek R1 does NOT support reasoning_content field - it looks for  tags embedded in content
+// These tests are for models that DO support the reasoning_content field
+
+#ifndef _WIN32
+TEST(CapabilitiesTest, Qwen3_235B_A22B_Thinking_2507) {
+    auto caps = get_caps("tests/Qwen-Qwen3-235B-A22B-Thinking-2507.jinja");
+    EXPECT_TRUE(caps.supports_system_role);
+    EXPECT_TRUE(caps.supports_tools);
+    EXPECT_TRUE(caps.supports_tool_calls);
+    EXPECT_FALSE(caps.supports_tool_call_id);
+    EXPECT_TRUE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_parallel_tool_calls);
+    EXPECT_FALSE(caps.requires_object_arguments);
+    EXPECT_FALSE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
+    // Qwen supports reasoning_content field
+    EXPECT_TRUE(caps.supports_reasoning);
+}
+
+TEST(CapabilitiesTest, GLM_4_6) {
+    auto caps = get_caps("tests/zai-org-GLM-4.6.jinja");
+    EXPECT_TRUE(caps.supports_system_role);
+    EXPECT_TRUE(caps.supports_tools);
+    EXPECT_TRUE(caps.supports_tool_calls);
+    EXPECT_FALSE(caps.supports_tool_call_id);
+    EXPECT_TRUE(caps.supports_tool_responses);
+    EXPECT_TRUE(caps.supports_parallel_tool_calls);
+    EXPECT_TRUE(caps.requires_object_arguments);
+    EXPECT_FALSE(caps.requires_non_null_content);
+    EXPECT_FALSE(caps.requires_typed_content_blocks);
+    // GLM-4.6 supports reasoning_content field
+    EXPECT_TRUE(caps.supports_reasoning);
+}
+#endif // _WIN32
+
+// ReasoningFormat tests - verify detection of different reasoning formats
+
+// Pattern A: REASONING_CONTENT (Qwen3, GLM-4.6/4.7)
+TEST(ReasoningFormatTest, ReasoningContentField_GLM47) {
+    auto caps = get_caps("tests/zai-org-GLM-4.7.jinja");
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::REASONING_CONTENT_FIELD);
+    // GLM-4.7 supports reasoning visibility control (clear_thinking flag)
+    EXPECT_TRUE(caps.supports_clear_thinking);
+}
+
+TEST(ReasoningFormatTest, ReasoningContentField_Qwen3) {
+    auto caps = get_caps("tests/Qwen-Qwen3-4B.jinja");
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::REASONING_CONTENT_FIELD);
+}
+
+// Pattern D: THOUGHT_FIELD (MiniCPM3)
+TEST(ReasoningFormatTest, ThoughtField_MiniCPM3) {
+    auto caps = get_caps("tests/openbmb-MiniCPM3-4B.jinja");
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::THOUGHT_FIELD);
+}
+
+// Pattern E: TOOL_PLAN_FIELD (Command-R7B) - requires tools
+// Note: Command-R7B is excluded on Windows (https://github.com/google/minja/issues/40)
+#ifndef _WIN32
+TEST(ReasoningFormatTest, ToolPlanField_CommandR7B) {
+    auto caps = get_caps("tests/CohereForAI-c4ai-command-r7b-12-2024-tool_use.jinja");
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::TOOL_PLAN_FIELD);
+    EXPECT_TRUE(caps.reasoning_requires_tools);
+}
+#endif // _WIN32
+
+// Pattern NONE: Templates without reasoning support
+TEST(ReasoningFormatTest, NoReasoning_Gemma7b) {
+    auto caps = get_caps("tests/google-gemma-7b-it.jinja");
+    EXPECT_FALSE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::NONE);
+}
+
+TEST(ReasoningFormatTest, NoReasoning_Llama31) {
+    auto caps = get_caps("tests/meta-llama-Llama-3.1-8B-Instruct.jinja");
+    EXPECT_FALSE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::NONE);
+}
+
+// Test Kimi K2 - supports reasoning via THOUGHTS_CONTENT_BLOCK
+// The template's render_content macro iterates over content blocks and outputs text
+TEST(ReasoningFormatTest, ThoughtsContentBlock_KimiK2) {
+    auto caps = get_caps("tests/moonshotai-Kimi-K2-Instruct.jinja");
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::THOUGHTS_CONTENT_BLOCK);
+    EXPECT_FALSE(caps.reasoning_requires_tools);
+}
+
+// Test that REASONING_CONTENT_FIELD models don't require tools for reasoning
+TEST(ReasoningFormatTest, ReasoningContentNoToolsRequired_Qwen3) {
+    auto caps = get_caps("tests/Qwen-Qwen3-4B.jinja");
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::REASONING_CONTENT_FIELD);
+    EXPECT_FALSE(caps.reasoning_requires_tools);
+}
+
+TEST(ReasoningFormatTest, ReasoningContentNoToolsRequired_GLM47) {
+    auto caps = get_caps("tests/zai-org-GLM-4.7.jinja");
+    EXPECT_TRUE(caps.supports_reasoning);
+    EXPECT_EQ(caps.reasoning_format, minja::ReasoningFormat::REASONING_CONTENT_FIELD);
+    EXPECT_FALSE(caps.reasoning_requires_tools);
 }
 

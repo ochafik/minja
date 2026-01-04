@@ -143,12 +143,14 @@ set(MODEL_IDS
     deepseek-ai/DeepSeek-V2-Lite
     deepseek-ai/DeepSeek-V2.5
     deepseek-ai/DeepSeek-V3
+    deepseek-ai/DeepSeek-V3.1
     # deepseek-ai/DeepSeek-V3.2  # No Jinja template; see synthetic below
     deepseek-ai/deepseek-coder-7b-instruct-v1.5
     dicta-il/dictalm2.0-instruct
     ehristoforu/Falcon3-8B-Franken-Basestruct
     google/gemma-7b-it
     ibm-granite/granite-3.1-8b-instruct
+    ibm-granite/granite-3.3-2b-instruct
     inclusionAI/Ling-Coder-lite
     indischepartij/MiniCPM-3B-OpenHermes-2.5-v2
     jinaai/ReaderLM-v2
@@ -156,6 +158,7 @@ set(MODEL_IDS
     llava-hf/llava-1.5-7b-hf
     meetkai/functionary-medium-v3.1
     meetkai/functionary-medium-v3.2
+    moonshotai/Kimi-K2-Instruct
     meta-llama/Llama-2-7b-chat-hf
     meta-llama/Llama-3.1-8B-Instruct
     meta-llama/Llama-3.2-3B-Instruct
@@ -195,6 +198,7 @@ set(MODEL_IDS
     upstage/solar-pro-preview-instruct
     xwen-team/Xwen-7B-Chat
     zai-org/GLM-4.6
+    zai-org/GLM-4.7
 
     # Synthetic templates for models without Jinja templates
     ${CMAKE_CURRENT_SOURCE_DIR}/synthetic-deepseek-v3.2-dsml.jinja

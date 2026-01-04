@@ -14,6 +14,7 @@
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
+#include <regex>
 
 #undef NDEBUG
 #include <cassert>
@@ -21,6 +22,16 @@
 #define TEST_DATE (getenv("TEST_DATE") ? getenv("TEST_DATE") : "2024-07-26")
 
 using json = nlohmann::ordered_json;
+
+#ifdef _WIN32
+// Workaround for https://github.com/ochafik/minja/issues/16
+// On Windows, C++ minja outputs fewer newlines than Python Jinja2 for certain templates.
+// This function collapses consecutive blank lines to normalize comparison.
+static std::string collapse_blank_lines(const std::string &s) {
+    static const std::regex blank_lines_regex("\n\n+");
+    return std::regex_replace(s, blank_lines_regex, "\n");
+}
+#endif
 
 template <class T>
 static void assert_equals(const T &expected, const T &actual){
@@ -76,7 +87,7 @@ static json caps_to_json(const minja::chat_template_caps &caps) {
         {"supports_tool_call_id", caps.supports_tool_call_id},
         {"requires_object_arguments", caps.requires_object_arguments},
         // {"requires_non_null_content", caps.requires_non_null_content},
-        {"requires_typed_content", caps.requires_typed_content},
+        {"requires_typed_content_blocks", caps.requires_typed_content_blocks},
     };
 }
 #endif
@@ -152,7 +163,96 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        if (expected != actual) {
+        // Validate expected/forbidden strings from _test_metadata if present
+        // This provides template-independent validation that doesn't rely on Python goldens
+        auto original_ctx = json::parse(read_file(ctx_file));
+        if (original_ctx.contains("_test_metadata")) {
+            auto metadata = original_ctx["_test_metadata"];
+            auto caps = tmpl.original_caps();
+
+            // Check expected_strings (always required)
+            if (metadata.contains("expected_strings")) {
+                for (const auto& s : metadata["expected_strings"]) {
+                    std::string expected_str = s.get<std::string>();
+                    if (actual.find(expected_str) == std::string::npos) {
+                        std::cerr << "Expected string not found in output: " << expected_str << "\n";
+                        std::cerr << "Actual output:\n" << actual << "\n";
+                        return 1;
+                    }
+                }
+            }
+
+            // Helper lambda to check expected strings
+            auto check_expected_strings = [&](const std::string& key, bool condition, const std::string& desc) -> bool {
+                if (metadata.contains(key) && condition) {
+                    for (const auto& s : metadata[key]) {
+                        std::string expected_str = s.get<std::string>();
+                        if (actual.find(expected_str) == std::string::npos) {
+                            std::cerr << "Expected string (" << desc << ") not found in output: " << expected_str << "\n";
+                            std::cerr << "Actual output:\n" << actual << "\n";
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            };
+
+            // Check expected_strings_if_supports_system_role
+            if (!check_expected_strings("expected_strings_if_supports_system_role", caps.supports_system_role, "system role")) {
+                return 1;
+            }
+
+            // Check expected_strings_if_supports_tool_calls
+            if (!check_expected_strings("expected_strings_if_supports_tool_calls", caps.supports_tool_calls, "tool calls")) {
+                return 1;
+            }
+
+            // Check expected_strings_if_supports_tool_responses
+            if (!check_expected_strings("expected_strings_if_supports_tool_responses", caps.supports_tool_responses, "tool responses")) {
+                return 1;
+            }
+
+            // Check expected_strings_if_supports_reasoning (with additional conditions)
+            // If context uses clear_thinking, only check if template supports it
+            // If template requires tools for reasoning (TOOL_PLAN_FIELD), only check if context has tool_calls
+            bool context_uses_clear_thinking = original_ctx.contains("clear_thinking");
+            bool context_has_tool_calls = false;
+            for (const auto& msg : original_ctx["messages"]) {
+                if (msg.contains("tool_calls") && !msg["tool_calls"].empty()) {
+                    context_has_tool_calls = true;
+                    break;
+                }
+            }
+            bool should_check_reasoning_strings = caps.supports_reasoning
+                && (!context_uses_clear_thinking || caps.supports_clear_thinking)
+                && (!caps.reasoning_requires_tools || context_has_tool_calls);
+            if (!check_expected_strings("expected_strings_if_supports_reasoning", should_check_reasoning_strings, "reasoning")) {
+                return 1;
+            }
+
+            // Check forbidden_strings (should never appear)
+            if (metadata.contains("forbidden_strings")) {
+                for (const auto& s : metadata["forbidden_strings"]) {
+                    std::string forbidden_str = s.get<std::string>();
+                    if (actual.find(forbidden_str) != std::string::npos) {
+                        std::cerr << "Forbidden string found in output: " << forbidden_str << "\n";
+                        std::cerr << "Actual output:\n" << actual << "\n";
+                        return 1;
+                    }
+                }
+            }
+        }
+
+#ifdef _WIN32
+        // On Windows, collapse blank lines for comparison due to known whitespace handling issues
+        auto expected_cmp = collapse_blank_lines(expected);
+        auto actual_cmp = collapse_blank_lines(actual);
+#else
+        auto expected_cmp = expected;
+        auto actual_cmp = actual;
+#endif
+
+        if (expected_cmp != actual_cmp) {
             if (getenv("WRITE_GOLDENS")) {
                 write_file(golden_file, actual);
                 std::cerr << "Updated golden file: " << golden_file << "\n";

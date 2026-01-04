@@ -28,6 +28,17 @@ using json = nlohmann::ordered_json;
 
 namespace minja {
 
+// Format used by a template to represent reasoning/thinking content
+enum class ReasoningFormat {
+    NONE,                    // Template doesn't support reasoning
+    REASONING_CONTENT_FIELD, // message.reasoning_content field (Qwen3, GLM-4.6/4.7) - canonical format
+    THINKING_CONTENT_BLOCK,  // message.content[].type == "thinking" (Ministral, DeepSeek-R1)
+    THOUGHTS_CONTENT_BLOCK,  // message.content[].type == "thoughts" (Apertus)
+    THOUGHT_FIELD,           // message.thought field (MiniCPM3)
+    TOOL_PLAN_FIELD,         // message.tool_plan field (Command-R7B)
+    THINKING_FIELD,          // message.thinking field (GPT-OSS-120B)
+};
+
 struct chat_template_caps {
     bool supports_tools = false;
     bool supports_tool_calls = false;
@@ -40,8 +51,23 @@ struct chat_template_caps {
     bool requires_object_arguments = false;
     // CohereForAI/c4ai-command-r-plus simple variant
     bool requires_non_null_content = false;
-    // MiniMaxAI/MiniMax-Text-01 special
-    bool requires_typed_content = false;
+    // Template expects content as typed blocks: [{type: "text", text: ...}] instead of plain string
+    bool requires_typed_content_blocks = false;
+
+    // Reasoning capabilities (extended thinking / chain-of-thought)
+    bool supports_reasoning = false;              // Template supports some form of reasoning
+    ReasoningFormat reasoning_format = ReasoningFormat::NONE;
+    bool reasoning_requires_tools = false;        // Reasoning only works when tool_calls present (Command-R7B)
+    bool reasoning_requires_suffix_position = false;  // Reasoning hidden for last non-tool-call assistant (Kimi K2)
+
+    // Reasoning behavior flags (computed via detection probes)
+    bool supports_reasoning_without_content = false;  // Can emit reasoning with empty/null content
+    bool supports_reasoning_with_content = false;     // Can emit both reasoning and content together
+    bool supports_enable_thinking = false;            // Template responds to enable_thinking=false
+
+    // Whether template supports reasoning visibility control (GLM-4.7's clear_thinking flag)
+    // When clear_thinking=false, all reasoning is shown; when true/default, position-based visibility
+    bool supports_clear_thinking = false;
 };
 
 struct chat_template_inputs {
@@ -65,6 +91,8 @@ struct chat_template_options {
     bool polyfill_system_role = true;
     bool polyfill_object_arguments = true;
     bool polyfill_typed_content = true;
+    // Convert reasoning_content to template's native format (thought, thinking, tool_plan)
+    bool polyfill_reasoning = true;
 };
 
 class chat_template {
@@ -124,16 +152,17 @@ class chat_template {
         const json dummy_str_user_msg = {{"role", "user"}, {"content", user_needle}};
         const json dummy_typed_user_msg = {{"role", "user"}, {"content", json::array({{{"type", "text"}, {"text", user_needle}}})}};
 
-        caps_.requires_typed_content =
+        caps_.requires_typed_content_blocks =
             !contains(try_raw_render(json::array({dummy_str_user_msg}), {}, false), user_needle)
             && contains(try_raw_render(json::array({dummy_typed_user_msg}), {}, false), user_needle);
 
-        const auto dummy_user_msg = caps_.requires_typed_content
+        const auto uses_blocks = caps_.requires_typed_content_blocks;
+        const auto dummy_user_msg = uses_blocks
             ? dummy_typed_user_msg
             : dummy_str_user_msg;
         const json needle_system_msg = {
             {"role", "system"},
-            {"content", caps_.requires_typed_content ? json::array({{{"type", "text"}, {"text", sys_needle}}}) : json(sys_needle)},
+            {"content", uses_blocks ? json::array({{{"type", "text"}, {"text", sys_needle}}}) : json(sys_needle)},
         };
 
         caps_.supports_system_role = contains(try_raw_render({needle_system_msg, dummy_user_msg,}, {}, false), sys_needle);
@@ -236,6 +265,238 @@ class chat_template {
             }), {}, false);
             caps_.supports_tool_responses = contains(out, "Some response!");
             caps_.supports_tool_call_id = contains(out, "call_911_");
+        }
+
+        // Detect thinking / reasoning capabilities
+        const std::string reasoning_needle = "<REASONING_NEEDLE>";
+        auto make_assistant_msg = [&](const json & extra_fields, const json & content = json()) {
+            json msg = {{"role", "assistant"}};
+            for (auto & [key, val] : extra_fields.items()) {
+                msg[key] = val;
+            }
+            if (!content.is_null()) {
+                msg["content"] = content;
+            } else if (caps_.requires_non_null_content) {
+                msg["content"] = "";
+            }
+            return msg;
+        };
+
+        // Pattern A: reasoning_content field (Qwen3, GLM-4.6/4.7)
+        // Test both with and without tool_calls to catch position-based templates like Kimi K2
+        // that only show reasoning for certain message positions
+        out = try_raw_render(json::array({
+            dummy_user_msg,
+            make_assistant_msg({{"reasoning_content", reasoning_needle}}),
+        }), {}, false);
+        bool supports_reasoning_content = contains(out, reasoning_needle);
+        bool reasoning_content_requires_tools = false;
+        // Also test with tool_calls for position-based templates (e.g., Kimi K2)
+        // that only show reasoning for messages with tool_calls
+        if (!supports_reasoning_content && caps_.supports_tool_calls) {
+            auto dummy_args = caps_.requires_object_arguments ? dummy_args_obj : json(dummy_args_obj.dump());
+            json reasoning_with_tools_msg = {
+                {"role", "assistant"},
+                {"content", caps_.requires_non_null_content ? "" : json()},
+                {"reasoning_content", reasoning_needle},
+                {"tool_calls", json::array({make_tool_call("test_tool", dummy_args)})},
+            };
+            out = try_raw_render(json::array({
+                dummy_user_msg,
+                reasoning_with_tools_msg,
+            }), {}, false);
+            supports_reasoning_content = contains(out, reasoning_needle);
+            if (supports_reasoning_content) {
+                // Reasoning only works with tool_calls for this template (position-based visibility)
+                reasoning_content_requires_tools = true;
+            }
+        }
+
+        // Pattern D: thought field (MiniCPM3)
+        out = try_raw_render(json::array({
+            dummy_user_msg,
+            make_assistant_msg({{"thought", reasoning_needle}}, "response"),
+        }), {}, false);
+        bool supports_thought_field = contains(out, reasoning_needle);
+
+        // Pattern F: thinking field (GPT-OSS-120B style)
+        out = try_raw_render(json::array({
+            dummy_user_msg,
+            make_assistant_msg({{"thinking", reasoning_needle}}, "response"),
+        }), {}, false);
+        bool supports_thinking_field = contains(out, reasoning_needle);
+
+        // Pattern B: content blocks with type="thinking" (Ministral)
+        // To detect stringification, we check if the output contains structural markers
+        // like '"type"' or "'type'" which would appear in serialized JSON/Python
+        json THINKING_CONTENT_BLOCK_msg = {
+            {"role", "assistant"},
+            {"content", json::array({
+                {{"type", "thinking"}, {"thinking", reasoning_needle}},
+                {{"type", "text"}, {"text", "response"}}
+            })}
+        };
+        out = try_raw_render(json::array({dummy_user_msg, THINKING_CONTENT_BLOCK_msg}), {}, false);
+        // Real support: needle appears but structural markers don't (template extracts content)
+        // Stringified: needle appears with structural markers (template just serializes the object)
+        bool supports_THINKING_CONTENT_BLOCK = contains(out, reasoning_needle)
+            && !contains(out, "\"type\"") && !contains(out, "'type'");
+
+        // Pattern C: content blocks with type="thoughts" (Apertus)
+        json THOUGHTS_CONTENT_BLOCK_msg = {
+            {"role", "assistant"},
+            {"content", json::array({
+                {{"type", "thoughts"}, {"text", reasoning_needle}},
+                {{"type", "text"}, {"text", "response"}}
+            })}
+        };
+        out = try_raw_render(json::array({dummy_user_msg, THOUGHTS_CONTENT_BLOCK_msg}), {}, false);
+        bool supports_THOUGHTS_CONTENT_BLOCK = contains(out, reasoning_needle)
+            && !contains(out, "\"type\"") && !contains(out, "'type'");
+
+        // Pattern E: tool_plan field (Command-R7B) - requires tool_calls
+        bool supports_tool_plan_field = false;
+        if (caps_.supports_tool_calls) {
+            auto dummy_args = caps_.requires_object_arguments ? dummy_args_obj : json(dummy_args_obj.dump());
+            json tool_plan_msg = {
+                {"role", "assistant"},
+                {"content", caps_.requires_non_null_content ? "" : json()},
+                {"tool_plan", reasoning_needle},
+                {"tool_calls", json::array({make_tool_call("test_tool", dummy_args)})},
+            };
+            out = try_raw_render(json::array({
+                dummy_user_msg,
+                tool_plan_msg,
+            }), {}, false);
+            supports_tool_plan_field = contains(out, reasoning_needle);
+        }
+
+        // Determine the primary reasoning format (in priority order)
+        // Field-based patterns are checked first as they are more specific
+        // Content block patterns are checked last as many templates just stringify unknown content
+        if (supports_reasoning_content) {
+            caps_.supports_reasoning = true;
+            caps_.reasoning_format = ReasoningFormat::REASONING_CONTENT_FIELD;
+            if (reasoning_content_requires_tools) {
+                // Position-based templates like Kimi K2 only show reasoning for messages with tool_calls
+                caps_.reasoning_requires_tools = true;
+            }
+        } else if (supports_thought_field) {
+            caps_.supports_reasoning = true;
+            caps_.reasoning_format = ReasoningFormat::THOUGHT_FIELD;
+        } else if (supports_thinking_field) {
+            caps_.supports_reasoning = true;
+            caps_.reasoning_format = ReasoningFormat::THINKING_FIELD;
+        } else if (supports_tool_plan_field) {
+            caps_.supports_reasoning = true;
+            caps_.reasoning_format = ReasoningFormat::TOOL_PLAN_FIELD;
+            caps_.reasoning_requires_tools = true;
+        } else if (supports_THINKING_CONTENT_BLOCK) {
+            caps_.supports_reasoning = true;
+            caps_.reasoning_format = ReasoningFormat::THINKING_CONTENT_BLOCK;
+            // Note: Don't override requires_typed_content_blocks - it's detected separately.
+            // Templates using content block reasoning may or may not require typed content for all messages.
+        } else if (supports_THOUGHTS_CONTENT_BLOCK) {
+            caps_.supports_reasoning = true;
+            caps_.reasoning_format = ReasoningFormat::THOUGHTS_CONTENT_BLOCK;
+            // Note: Don't override requires_typed_content_blocks - it's detected separately.
+        }
+
+        // Test reasoning visibility control (GLM-4.7's clear_thinking pattern)
+        // When clear_thinking=false is passed, template should show all reasoning
+        if (caps_.reasoning_format == ReasoningFormat::REASONING_CONTENT_FIELD) {
+            // Test with multiple assistant messages and clear_thinking=false
+            const std::string first_reasoning = "<FIRST_REASONING>";
+            const std::string second_reasoning = "<SECOND_REASONING>";
+            json extra_ctx = {{"clear_thinking", false}};
+            out = try_raw_render(json::array({
+                dummy_user_msg,
+                make_assistant_msg({{"reasoning_content", first_reasoning}}, "first"),
+                dummy_user_msg,
+                make_assistant_msg({{"reasoning_content", second_reasoning}}, "second"),
+            }), {}, false, extra_ctx);
+            // If both reasonings are visible with clear_thinking=false, template supports it
+            caps_.supports_clear_thinking = contains(out, first_reasoning) && contains(out, second_reasoning);
+        }
+
+        // Test reasoning behavior flags for templates that support reasoning
+        if (caps_.supports_reasoning) {
+            const std::string reasoning_test = "<REASON_TEST>";
+            const std::string content_test = "<CONTENT_TEST>";
+
+            // Helper to create assistant message with reasoning in the template's native format
+            auto make_reasoning_msg = [&](const std::string& reasoning, const std::string& content) -> json {
+                json msg = {{"role", "assistant"}};
+                switch (caps_.reasoning_format) {
+                    case ReasoningFormat::REASONING_CONTENT_FIELD:
+                        msg["reasoning_content"] = reasoning;
+                        msg["content"] = content;
+                        break;
+                    case ReasoningFormat::THOUGHT_FIELD:
+                        msg["thought"] = reasoning;
+                        msg["content"] = content;
+                        break;
+                    case ReasoningFormat::THINKING_FIELD:
+                        msg["thinking"] = reasoning;
+                        msg["content"] = content;
+                        break;
+                    case ReasoningFormat::TOOL_PLAN_FIELD: {
+                        // tool_plan requires tool_calls to be present
+                        auto dummy_args = caps_.requires_object_arguments ? dummy_args_obj : json(dummy_args_obj.dump());
+                        msg["content"] = caps_.requires_non_null_content ? "" : json();
+                        msg["tool_plan"] = reasoning;
+                        msg["tool_calls"] = json::array({make_tool_call("test_tool", dummy_args)});
+                        break;
+                    }
+                    case ReasoningFormat::THINKING_CONTENT_BLOCK:
+                        msg["content"] = json::array({
+                            {{"type", "thinking"}, {"thinking", reasoning}},
+                            {{"type", "text"}, {"text", content}}
+                        });
+                        break;
+                    case ReasoningFormat::THOUGHTS_CONTENT_BLOCK:
+                        msg["content"] = json::array({
+                            {{"type", "thoughts"}, {"text", reasoning}},
+                            {{"type", "text"}, {"text", content}}
+                        });
+                        break;
+                    default:
+                        break;
+                }
+                return msg;
+            };
+
+            // Test supports_reasoning_without_content: can template emit reasoning with empty content?
+            // Skip for TOOL_PLAN_FIELD since it requires tool_calls which have different semantics
+            if (caps_.reasoning_format != ReasoningFormat::TOOL_PLAN_FIELD) {
+                out = try_raw_render(json::array({
+                    dummy_user_msg,
+                    make_reasoning_msg(reasoning_test, ""),
+                }), {}, false);
+                caps_.supports_reasoning_without_content = contains(out, reasoning_test);
+            }
+
+            // Test supports_reasoning_with_content: can template emit both reasoning and content together?
+            // Skip for TOOL_PLAN_FIELD since tool calls don't have regular content
+            if (caps_.reasoning_format != ReasoningFormat::TOOL_PLAN_FIELD) {
+                out = try_raw_render(json::array({
+                    dummy_user_msg,
+                    make_reasoning_msg(reasoning_test, content_test),
+                }), {}, false);
+                caps_.supports_reasoning_with_content = contains(out, reasoning_test) && contains(out, content_test);
+            }
+
+            // Test supports_enable_thinking: does template honor enable_thinking=false?
+            // Only test for REASONING_CONTENT_FIELD format where this flag is commonly used (Qwen3)
+            if (caps_.reasoning_format == ReasoningFormat::REASONING_CONTENT_FIELD) {
+                json disable_ctx = {{"enable_thinking", false}};
+                out = try_raw_render(json::array({
+                    dummy_user_msg,
+                    make_reasoning_msg(reasoning_test, content_test),
+                }), {}, false, disable_ctx);
+                // If reasoning disappears but content remains when enable_thinking=false, template respects it
+                caps_.supports_enable_thinking = !contains(out, reasoning_test) && contains(out, content_test);
+            }
         }
 
         try {
@@ -342,6 +603,7 @@ class chat_template {
         auto has_tool_calls = false;
         auto has_tool_responses = false;
         auto has_string_content = false;
+        auto has_reasoning_content = false;
         for (const auto & message : inputs.messages) {
             if (message.contains("tool_calls") && !message["tool_calls"].is_null()) {
                 has_tool_calls = true;
@@ -352,6 +614,9 @@ class chat_template {
             if (message.contains("content") && message["content"].is_string()) {
                 has_string_content = true;
             }
+            if (message.contains("reasoning_content") && !message["reasoning_content"].is_null()) {
+                has_reasoning_content = true;
+            }
         }
 
         auto polyfill_system_role = opts.polyfill_system_role && !caps_.supports_system_role;
@@ -360,7 +625,12 @@ class chat_template {
         auto polyfill_tool_calls = opts.polyfill_tool_calls && has_tool_calls && !caps_.supports_tool_calls;
         auto polyfill_tool_responses = opts.polyfill_tool_responses && has_tool_responses && !caps_.supports_tool_responses;
         auto polyfill_object_arguments = opts.polyfill_object_arguments && has_tool_calls && caps_.requires_object_arguments;
-        auto polyfill_typed_content = opts.polyfill_typed_content && has_string_content && caps_.requires_typed_content;
+        auto polyfill_typed_content = opts.polyfill_typed_content && has_string_content && caps_.requires_typed_content_blocks;
+        // Polyfill reasoning_content to template's native format when template supports
+        // a different reasoning format than REASONING_CONTENT_FIELD (the canonical format)
+        auto polyfill_reasoning = opts.polyfill_reasoning && has_reasoning_content
+            && caps_.reasoning_format != ReasoningFormat::NONE
+            && caps_.reasoning_format != ReasoningFormat::REASONING_CONTENT_FIELD;
 
         auto needs_polyfills = opts.apply_polyfills && (false
             || polyfill_system_role
@@ -369,20 +639,30 @@ class chat_template {
             || polyfill_tool_responses
             || polyfill_object_arguments
             || polyfill_typed_content
+            || polyfill_reasoning
         );
 
         if (needs_polyfills) {
             actual_messages = json::array();
 
+            // Helper to build typed content array from string or existing array
+            auto build_content_array = [](const json & content) -> json {
+                json content_blocks = json::array();
+                if (content.is_string()) {
+                    content_blocks.push_back({{"type", "text"}, {"text", content}});
+                } else if (content.is_array()) {
+                    for (const auto & block : content) {
+                        content_blocks.push_back(block);
+                    }
+                }
+                return content_blocks;
+            };
+
             auto add_message = [&](const json & msg) {
                 if (polyfill_typed_content && msg.contains("content") && !msg.at("content").is_null() && msg.at("content").is_string()) {
-                    actual_messages.push_back({
-                        {"role", msg.at("role")},
-                        {"content", {{
-                            {"type", "text"},
-                            {"text", msg.at("content")},
-                        }}},
-                    });
+                    auto adjusted = msg;
+                    adjusted["content"] = build_content_array(msg.at("content"));
+                    actual_messages.push_back(adjusted);
                 } else {
                     actual_messages.push_back(msg);
                 }
@@ -474,6 +754,56 @@ class chat_template {
                     }
                     message["content"] = obj.dump(2);
                     message.erase("name");
+                }
+
+                // Polyfill reasoning_content to template's native format
+                if (polyfill_reasoning && message.contains("reasoning_content") && !message["reasoning_content"].is_null()) {
+                    auto reasoning = message["reasoning_content"];
+                    switch (caps_.reasoning_format) {
+                        case ReasoningFormat::THOUGHT_FIELD:
+                            // MiniCPM3 style: message.thought
+                            message["thought"] = reasoning;
+                            break;
+                        case ReasoningFormat::THINKING_FIELD:
+                            // GPT-OSS-120B style: message.thinking
+                            message["thinking"] = reasoning;
+                            break;
+                        case ReasoningFormat::TOOL_PLAN_FIELD:
+                            // Command-R7B style: message.tool_plan (only with tool_calls)
+                            if (message.contains("tool_calls")) {
+                                message["tool_plan"] = reasoning;
+                            }
+                            break;
+                        case ReasoningFormat::THINKING_CONTENT_BLOCK:
+                            // Ministral style: content blocks with type="thinking"
+                            {
+                                json content_blocks = json::array();
+                                content_blocks.push_back({{"type", "thinking"}, {"thinking", reasoning}});
+                                if (message.contains("content") && !message["content"].is_null()) {
+                                    for (const auto & block : build_content_array(message["content"])) {
+                                        content_blocks.push_back(block);
+                                    }
+                                }
+                                message["content"] = content_blocks;
+                            }
+                            break;
+                        case ReasoningFormat::THOUGHTS_CONTENT_BLOCK:
+                            // Apertus style: content blocks with type="thoughts"
+                            {
+                                json content_blocks = json::array();
+                                content_blocks.push_back({{"type", "thoughts"}, {"text", reasoning}});
+                                if (message.contains("content") && !message["content"].is_null()) {
+                                    for (const auto & block : build_content_array(message["content"])) {
+                                        content_blocks.push_back(block);
+                                    }
+                                }
+                                message["content"] = content_blocks;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                    message.erase("reasoning_content");
                 }
 
                 if (!message["content"].is_null() && polyfill_system_role) {
