@@ -655,3 +655,14 @@ TEST(SyntaxTest, SimpleCases) {
     // expect_throws_with_message_substr([]() { render("{{ a.b }}", {}, {}); }, "'a' is not defined");
     // expect_throws_with_message_substr([]() { render("{{ raise_exception('hey') }}", {}, {}); }, "hey");
 }
+
+TEST(SyntaxTest, NoneEquality) {
+    EXPECT_EQ("False", render("{{ [] == none }}", {}, {}));
+    EXPECT_EQ("False", render("{{ {} == none }}", {}, {}));
+    EXPECT_EQ("False", render("{{ [1, 2, 3] == none }}", {}, {}));
+
+    EXPECT_EQ("False", render("{{ none == [] }}", {}, {}));
+    EXPECT_EQ("False", render("{{ none == {} }}", {}, {}));
+    EXPECT_EQ("False", render("{{ none == [1, 2, 3] }}", {}, {}));
+    EXPECT_EQ("True", render("{{ none != [] }}", {}, {}));
+}

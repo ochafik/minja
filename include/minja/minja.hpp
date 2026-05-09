@@ -377,6 +377,7 @@ public:
       }
       return true;
     } else {
+      if (other.array_ || other.object_) return false;
       return primitive_ == other.primitive_;
     }
   }
