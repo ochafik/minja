@@ -79,6 +79,18 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ("bcXYZab", render("{{ 'abcXYZabc'.strip('ac') }}", {}, {}));
 
     EXPECT_EQ(R"(["a", "b"])", render("{{ 'a b'.split(' ') | tojson }}", {}, {}));
+ 
+    // Test rsplit (reverse split) with maxsplit parameter
+    // rsplit splits from right to left, which is crucial for extracting content after the last delimiter
+    // Used in chat templates like DeepSeek-R1: content.rsplit('</think>', 1)[-1]
+    EXPECT_EQ(R"(["a-b", "c"])", render("{{ 'a-b-c'.rsplit('-', 1) | tojson }}", {}, {}));
+    EXPECT_EQ(R"(["a", "b-c"])", render("{{ 'a-b-c'.split('-', 1) | tojson }}", {}, {}));
+    EXPECT_EQ(R"(["prefix</think>middle", "suffix"])", render("{{ 'prefix</think>middle</think>suffix'.rsplit('</think>', 1) | tojson }}", {}, {}));
+    
+    // Test rsplit with indexing - extract content after the last delimiter
+    EXPECT_EQ(" suffix", render("{{ 'prefix</think>middle</think> suffix'.rsplit('</think>', 1)[-1] }}", {}, {}));
+    EXPECT_EQ(R"(["a", "b", "c"])", render("{{ 'a-b-c'.rsplit('-') | tojson }}", {}, {}));
+
 
     EXPECT_EQ(
         "Ok",
