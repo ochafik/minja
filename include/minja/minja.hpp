@@ -1821,7 +1821,17 @@ private:
       if (it == end) return nullptr;
       if (*it == '"' || *it == '\'') {
         auto str = parseString();
-        if (str) return std::make_shared<Value>(*str);
+        if (str) {
+          std::string combined = std::move(*str);
+          consumeSpaces();
+          while (it != end && (*it == '"' || *it == '\'')) {
+            auto next = parseString();
+            if (!next) throw std::runtime_error("Failed to parse adjacent string literal");
+            combined += *next;
+            consumeSpaces();
+          }
+          return std::make_shared<Value>(std::move(combined));
+        }
       }
       static std::regex prim_tok(R"(true\b|True\b|false\b|False\b|None\b)");
       auto token = consumeToken(prim_tok);

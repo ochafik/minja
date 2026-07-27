@@ -77,6 +77,21 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ("a ", render("{{ ' a '.lstrip() }}", {}, {}));
     EXPECT_EQ(" a", render("{{ ' a '.rstrip() }}", {}, {}));
     EXPECT_EQ("bcXYZab", render("{{ 'abcXYZabc'.strip('ac') }}", {}, {}));
+    EXPECT_EQ("abc", render(R"({{ "a" 'b' "c" }})", {}, {}));
+    EXPECT_THAT(
+        []() {
+            render(
+                R"({{ raise_exception(
+                    "chat_template: tool_calls[].function.arguments must be a "
+                    "JSON object (mapping), not a string. Deserialize arguments "
+                    "before passing to the template."
+                ) }})",
+                {},
+                {});
+        },
+        ThrowsWithSubstr(
+            "chat_template: tool_calls[].function.arguments must be a JSON object "
+            "(mapping), not a string. Deserialize arguments before passing to the template."));
 
     EXPECT_EQ(R"(["a", "b"])", render("{{ 'a b'.split(' ') | tojson }}", {}, {}));
 
