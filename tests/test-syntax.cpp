@@ -247,6 +247,16 @@ TEST(SyntaxTest, SimpleCases) {
     EXPECT_EQ(
         "False",
         render(R"({% set foo = true %}{{ not foo is defined }})", {}, {}));
+    EXPECT_EQ("True", render("{{ missing is undefined }}", {}, {}));
+    EXPECT_EQ("False", render("{{ missing is not undefined }}", {}, {}));
+    EXPECT_EQ("False", render("{{ value is undefined }}", {{"value", false}}, {}));
+    EXPECT_EQ("True", render("{{ value is not undefined }}", {{"value", false}}, {}));
+
+    const std::string thinking_tmpl =
+        "{% if enable_thinking is undefined or enable_thinking is true %}thinking{% endif %}";
+    EXPECT_EQ("thinking", render(thinking_tmpl, {}, {}));
+    EXPECT_EQ("thinking", render(thinking_tmpl, {{"enable_thinking", true}}, {}));
+    EXPECT_EQ("", render(thinking_tmpl, {{"enable_thinking", false}}, {}));
     EXPECT_EQ(
         "True",
         render(R"({% set foo = true %}{{ foo is true }})", {}, {}));
